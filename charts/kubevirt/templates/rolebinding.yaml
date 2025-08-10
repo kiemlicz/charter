@@ -4,7 +4,7 @@ metadata:
     labels:
         kubevirt.io: ""
     name: kubevirt-operator-rolebinding
-    namespace: kubevirt
+    namespace: '{{ .Release.Namespace }}'
 roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: Role

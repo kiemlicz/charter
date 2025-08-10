@@ -31,3 +31,9 @@ Currently handles:
 ```bash
 TODO 
 ```
+
+
+TODO:  
+- properly template namespaces 
+- add templates for kubevirt cr
+- add logic to create pr 

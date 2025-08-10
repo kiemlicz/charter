@@ -111,3 +111,16 @@ func FilterManifests(manifests *[]*map[string]interface{}, denyKindFilter []stri
 
 	return &filteredManifests
 }
+
+func UpdateNamespace(manifests *[]*map[string]interface{}) *[]*map[string]interface{} {
+	//fixme - need something way more clever to update not only medata.namespace but nested namespaces like clusterRoleBinding
+	for _, m := range *manifests {
+		metadata, ok := (*m)["metadata"].(map[string]interface{})
+		if ok {
+			if _, nsOk := metadata["namespace"].(string); nsOk {
+				metadata["namespace"] = Namespace
+			}
+		}
+	}
+	return manifests
+}

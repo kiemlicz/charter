@@ -14,6 +14,10 @@ import (
 	"strings"
 )
 
+const (
+	Namespace = "{{ .Release.Namespace }}"
+)
+
 type HelmChart struct {
 	path  string
 	chart *chart.Chart
@@ -68,22 +72,6 @@ func (hc *HelmChart) CreateTemplates(newManifests *[]*map[string]interface{}) er
 	hc.chart.Templates = make([]*chart.File, 0, len(templates))
 	for _, tmpl := range templates {
 		hc.chart.Templates = append(hc.chart.Templates, tmpl)
-	}
-
-	return nil
-}
-
-func (hc *HelmChart) clearTemplates() error {
-	templatesDir := fmt.Sprintf("%s/templates", hc.path)
-	files, err := os.ReadDir(templatesDir)
-	if err != nil {
-		return err
-	}
-	for _, file := range files {
-		err := os.Remove(fmt.Sprintf("%s/%s", templatesDir, file.Name()))
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -158,5 +146,21 @@ func (hc *HelmChart) Package() error {
 	}
 
 	common.Log.Infof("Successfully packaged chart to %s", path)
+	return nil
+}
+
+func (hc *HelmChart) clearTemplates() error {
+	templatesDir := fmt.Sprintf("%s/templates", hc.path)
+	files, err := os.ReadDir(templatesDir)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		err := os.Remove(fmt.Sprintf("%s/%s", templatesDir, file.Name()))
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
