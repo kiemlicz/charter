@@ -5,4 +5,4 @@ sources:
 - https://kubevirt.io/
 - https://kubevirt.io/user-guide/storage/containerized_data_importer/
 type: application
-version: 0.0.1
+version: 1.62.0

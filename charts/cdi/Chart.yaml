@@ -6,4 +6,4 @@ sources:
 - https://kubevirt.io/
 - https://kubevirt.io/user-guide/cluster_admin/installation/
 type: application
-version: 0.0.1
+version: 1.62.0

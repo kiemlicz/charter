@@ -2,6 +2,7 @@ package updater
 
 import (
 	"fmt"
+	"github.com/Masterminds/semver/v3"
 	"github.com/kiemlicz/kubevirt-charts/internal/common"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
@@ -76,8 +77,17 @@ func (hc *HelmChart) clearTemplates() error {
 	return nil
 }
 
-func (hc *HelmChart) UpdateAppVersion(appVersion string) {
-	hc.chart.Metadata.AppVersion = appVersion
+func (hc *HelmChart) UpdateVersions(appVersion string, crds bool) error {
+	v, err := semver.NewVersion(appVersion)
+	if err != nil {
+		return fmt.Errorf("invalid appVersion: %s, %w", appVersion, err)
+	}
+	if !crds {
+		hc.chart.Metadata.AppVersion = appVersion
+	}
+	hc.chart.Metadata.Version = v.String()
+
+	return nil
 }
 
 func (hc *HelmChart) Build() error {
