@@ -36,9 +36,9 @@ func (hc *HelmChart) AppVersion() string {
 	return hc.chart.AppVersion()
 }
 
-func (hc *HelmChart) UpdateManifests(newManifests *[]*map[string]interface{}) error {
+func (hc *HelmChart) CreateTemplates(newManifests *[]*map[string]interface{}) error {
 	common.Log.Debugf("Updating: %d Helm Chart manifests in: %s", len(*newManifests), hc.path)
-	templates := make([]*chart.File, len(*newManifests))
+	templates := make(map[string]*chart.File, len(*newManifests))
 
 	for i, manifest := range *newManifests {
 		manifestYAML, err := yaml.Marshal(manifest)
@@ -51,13 +51,23 @@ func (hc *HelmChart) UpdateManifests(newManifests *[]*map[string]interface{}) er
 			return fmt.Errorf("manifest %d does not have a valid 'kind' field", i)
 		}
 
-		templates[i] = &chart.File{
-			Name: fmt.Sprintf("templates/%s-%d.yaml", strings.ToLower(kind), i),
-			Data: manifestYAML,
+		if existingTemplate, exists := templates[kind]; exists {
+			newData := append(existingTemplate.Data, []byte("\n---\n")...)
+			newData = append(newData, manifestYAML...)
+			existingTemplate.Data = newData
+		} else {
+			templates[kind] = &chart.File{
+				Name: fmt.Sprintf("templates/%s.yaml", strings.ToLower(kind)),
+				Data: manifestYAML,
+			}
 		}
 	}
 
-	hc.chart.Templates = templates
+	hc.chart.Templates = make([]*chart.File, 0, len(templates))
+	for _, tmpl := range templates {
+		hc.chart.Templates = append(hc.chart.Templates, tmpl)
+	}
+
 	return nil
 }
 

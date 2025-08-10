@@ -76,7 +76,7 @@ func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
 			common.Log.Errorf("Failed to load CRDs Helm chart for %s: %v", crdsChartPath, err)
 			return err
 		}
-		err = crdsChart.UpdateManifests(crds)
+		err = crdsChart.CreateTemplates(crds)
 		if err != nil {
 			common.Log.Errorf("Failed to update CRDs in chart %s: %v", crdsChartPath, err)
 			return err
@@ -89,7 +89,7 @@ func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
 
 	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.HelmChart, len(*manifests))
 
-	err = chart.UpdateManifests(updater.FilterManifests(manifests, releaseConfig.Filter))
+	err = chart.CreateTemplates(updater.FilterManifests(manifests, releaseConfig.Filter))
 	if err != nil {
 		common.Log.Errorf("Failed to update manifests in chart %s: %v", releaseConfig, err)
 		return err
