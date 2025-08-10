@@ -1,8 +1,9 @@
 # KubeVirt Charts
 
-**WIP**
+**WIP**  
+**Charts not yet published until automated publisher is ready**
 
-While waiting for [official ones](https://github.com/kubevirt/kubevirt/issues/8347) created simple app that auto creates the Charts on each
+While waiting for [official ones](https://github.com/kubevirt/kubevirt/issues/8347) I've created simple app that auto creates the Charts on each
 KubeVirt release.
 
 Currently handles:
