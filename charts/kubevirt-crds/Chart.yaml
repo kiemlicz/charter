@@ -1,11 +1,8 @@
 apiVersion: v2
-
-name: kubevirt-crds
-type: application
 description: A Helm chart for KubeVirt CRDs
-
+name: kubevirt-crds
 sources:
 - https://kubevirt.io/
 - https://kubevirt.io/user-guide/cluster_admin/installation/
-
+type: application
 version: 0.0.1

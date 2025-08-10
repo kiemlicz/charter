@@ -1,11 +1,8 @@
 apiVersion: v2
-
-name: cdi-crds
-type: application
 description: A Helm chart for KubeVirt CDI CRDs
-
+name: cdi-crds
 sources:
-  - https://kubevirt.io/
-  - https://kubevirt.io/user-guide/storage/containerized_data_importer/
-
+- https://kubevirt.io/
+- https://kubevirt.io/user-guide/storage/containerized_data_importer/
+type: application
 version: 0.0.1

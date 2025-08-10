@@ -91,14 +91,20 @@ func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
 			common.Log.Errorf("Failed to update CRDs in chart %s: %v", crdsChartPath, err)
 			return err
 		}
-		crdsChart.Save()
+		crdsChart.Build()
+		crdsChart.Lint()
+		crdsChart.Package()
 	}
+
 	err = chart.UpdateManifests(manifests)
 	if err != nil {
 		common.Log.Errorf("Failed to update manifests in chart %s: %v", releaseConfig, err)
 		return err
 	}
-	chart.Save()
+	chart.UpdateAppVersion(*releaseVersion)
+	chart.Build()
+	chart.Lint()
+	chart.Package()
 
 	return nil
 }

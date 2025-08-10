@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+    labels:
+        app: containerized-data-importer
+        app.kubernetes.io/component: storage
+        app.kubernetes.io/managed-by: cdi-operator
+        cdi.kubevirt.io: ""
+    name: cdi-operator
+    namespace: cdi
+roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: cdi-operator
+subjects:
+    - kind: ServiceAccount
+      name: cdi-operator
+      namespace: cdi

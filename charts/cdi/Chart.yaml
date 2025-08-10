@@ -1,12 +1,9 @@
 apiVersion: v2
-
-name: cdi
-type: application
+appVersion: v1.62.0
 description: A Helm chart for KubeVirt CDI
-
+name: cdi
 sources:
-  - https://kubevirt.io/
-  - https://kubevirt.io/user-guide/cluster_admin/installation/
-
-version: 0.1.0
-appVersion: 1.16.0
+- https://kubevirt.io/
+- https://kubevirt.io/user-guide/cluster_admin/installation/
+type: application
+version: 0.0.1

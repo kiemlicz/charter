@@ -1,9 +1,6 @@
 log:
   level: warn
 
-helm:
-  k8s: 1.30
-
 githubReleases:
   - owner: "kubevirt"
     repo: "kubevirt"
