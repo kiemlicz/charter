@@ -104,13 +104,12 @@ func (hc *HelmChart) Build() error {
 func (hc *HelmChart) Lint() error {
 	k8sVersionString := "1.30.0"
 	lintNamespace := "lint-namespace"
-	common.Log.Infof("Linting Helm chart in: %s against: %s", hc.path, k8sVersionString)
 	lintK8sVersion := chartutil.KubeVersion{
 		Version: k8sVersionString,
 		Major:   "1",
 		Minor:   "30",
 	}
-
+	common.Log.Infof("Linting Helm chart in: %s against: %s", hc.path, k8sVersionString)
 	linter := lint.AllWithKubeVersion(hc.path, hc.chart.Values, lintNamespace, &lintK8sVersion)
 
 	if len(linter.Messages) > 0 {

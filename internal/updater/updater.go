@@ -60,7 +60,7 @@ func ExtractYamlFromAsset(assetData []byte) (*[]map[string]interface{}, error) {
 	return &documents, nil
 }
 
-func CollectManifests(ctx context.Context, client *github.Client, releaseConfig *common.Release, releaseData *github.RepositoryRelease) (*[]*map[string]interface{}, *[]*map[string]interface{}, error) {
+func DownloadManifests(ctx context.Context, client *github.Client, releaseConfig *common.Release, releaseData *github.RepositoryRelease) (*[]*map[string]interface{}, *[]*map[string]interface{}, error) {
 	crds := make([]*map[string]interface{}, 0)
 	manifests := make([]*map[string]interface{}, 0)
 	assetSet := make(map[string]bool)
