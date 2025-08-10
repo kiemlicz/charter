@@ -73,31 +73,52 @@ func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
 
 		crdsChart, err := updater.NewHelmChart(crdsChartPath)
 		if err != nil {
-			common.Log.Errorf("Failed to load CRDs Helm chart for %s: %v", crdsChartPath, err)
 			return err
 		}
 		err = crdsChart.CreateTemplates(crds)
 		if err != nil {
-			common.Log.Errorf("Failed to update CRDs in chart %s: %v", crdsChartPath, err)
 			return err
 		}
-		crdsChart.UpdateVersions(*releaseVersion, true)
-		crdsChart.Build()
-		crdsChart.Lint()
-		crdsChart.Package()
+		err = crdsChart.UpdateVersions(*releaseVersion, true)
+		if err != nil {
+			return err
+		}
+		err = crdsChart.Build()
+		if err != nil {
+			return err
+		}
+		err = crdsChart.Lint()
+		if err != nil {
+			return err
+		}
+		err = crdsChart.Package()
+		if err != nil {
+			return err
+		}
 	}
 
 	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.HelmChart, len(*manifests))
 
 	err = chart.CreateTemplates(updater.FilterManifests(manifests, releaseConfig.Filter))
 	if err != nil {
-		common.Log.Errorf("Failed to update manifests in chart %s: %v", releaseConfig, err)
 		return err
 	}
-	chart.UpdateVersions(*releaseVersion, false)
-	chart.Build()
-	chart.Lint()
-	chart.Package()
+	err = chart.UpdateVersions(*releaseVersion, false)
+	if err != nil {
+		return err
+	}
+	err = chart.Build()
+	if err != nil {
+		return err
+	}
+	err = chart.Lint()
+	if err != nil {
+		return err
+	}
+	err = chart.Package()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

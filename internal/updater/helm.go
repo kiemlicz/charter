@@ -23,6 +23,7 @@ func NewHelmChart(path string) (*HelmChart, error) {
 	common.Log.Infof("Loading Helm chart from: %s", path)
 	chartObj, err := loader.Load(path)
 	if err != nil {
+		common.Log.Errorf("Failed to load Helm chart from %s: %v", path, err)
 		return nil, err
 	}
 	return &HelmChart{
@@ -43,6 +44,7 @@ func (hc *HelmChart) CreateTemplates(newManifests *[]*map[string]interface{}) er
 	for i, manifest := range *newManifests {
 		manifestYAML, err := yaml.Marshal(manifest)
 		if err != nil {
+			common.Log.Errorf("Failed to marshal manifest %d: %v", i, err)
 			return err
 		}
 		kind, ok := (*manifest)["kind"].(string)
