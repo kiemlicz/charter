@@ -100,9 +100,11 @@ func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
 	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.HelmChart, len(*manifests))
 
 	err = chart.CreateTemplates(
-		updater.FilterManifests(
-			updater.UpdateNamespace(manifests),
-			releaseConfig.Filter,
+		updater.Parametrize(
+			updater.FilterManifests(
+				updater.UpdateNamespace(manifests),
+				releaseConfig.Filter,
+			),
 		),
 	)
 	if err != nil {

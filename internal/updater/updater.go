@@ -124,3 +124,8 @@ func UpdateNamespace(manifests *[]*map[string]interface{}) *[]*map[string]interf
 	}
 	return manifests
 }
+
+func Parametrize(manifests *[]*map[string]interface{}) *[]*map[string]interface{} {
+	// todo move common values
+	return manifests
+}
