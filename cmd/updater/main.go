@@ -89,7 +89,7 @@ func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
 
 	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.HelmChart, len(*manifests))
 
-	err = chart.UpdateManifests(manifests)
+	err = chart.UpdateManifests(updater.FilterManifests(manifests, releaseConfig.Filter))
 	if err != nil {
 		common.Log.Errorf("Failed to update manifests in chart %s: %v", releaseConfig, err)
 		return err

@@ -13,6 +13,21 @@ Currently handles:
 
 # Usage
 
+1. Create namespace for KubeVirt, with proper labels. To get right labels, consult the [KubeVirt release manifests](https://github.com/kubevirt/kubevirt/releases)
+
+    ```bash
+   kubectl apply -f - <<EOF
+    apiVersion: v1
+    kind: Namespace
+    metadata:
+        labels:
+            kubevirt.io: ""
+            pod-security.kubernetes.io/enforce: privileged
+        name: kubevirt
+    EOF
+   ```
+
+2. 
 ```bash
 TODO 
 ```

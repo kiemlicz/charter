@@ -94,3 +94,20 @@ func DownloadManifests(ctx context.Context, client *github.Client, releaseConfig
 	common.Log.Infof("Total manifests extracted for release %s: %d", releaseConfig.Repo, len(manifests))
 	return &manifests, &crds, nil
 }
+
+func FilterManifests(manifests *[]*map[string]interface{}, denyKindFilter []string) *[]*map[string]interface{} {
+	filteredManifests := make([]*map[string]interface{}, 0)
+	deniedKinds := make(map[string]bool)
+	for _, filter := range denyKindFilter {
+		deniedKinds[strings.ToLower(filter)] = true
+	}
+
+	for _, m := range *manifests {
+		if kind, ok := (*m)["kind"].(string); ok && deniedKinds[strings.ToLower(kind)] {
+			continue
+		}
+		filteredManifests = append(filteredManifests, m)
+	}
+
+	return &filteredManifests
+}

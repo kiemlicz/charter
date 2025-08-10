@@ -8,9 +8,15 @@ githubReleases:
       - "kubevirt-operator.yaml"
       - "kubevirt-cr.yaml"
     chart: "charts/kubevirt"
+    filter:
+      - namespace
+      - namespaces
   - owner: "kubevirt"
     repo: "containerized-data-importer"
     assets:
       - "cdi-operator.yaml"
       - "cdi-cr.yaml"
     chart: "charts/cdi"
+    filter:
+      - namespace
+      - namespaces
