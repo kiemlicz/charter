@@ -1,0 +1,13 @@
+apiVersion: v2
+
+name: kubevirt
+type: application
+description: A Helm chart for KubeVirt
+
+sources:
+- https://kubevirt.io/
+- https://kubevirt.io/user-guide/cluster_admin/installation/
+
+
+version: 0.0.1
+appVersion: 1.16.0
