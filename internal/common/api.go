@@ -1,11 +1,12 @@
 package common
 
 type Release struct {
-	Owner     string   `mapstructure:"owner"`
-	Repo      string   `mapstructure:"repo"`
-	Assets    []string `mapstructure:"assets"`
-	HelmChart string   `mapstructure:"chart"`
-	Filter    []string `mapstructure:"filter"`
+	Owner        string              `mapstructure:"owner"`
+	Repo         string              `mapstructure:"repo"`
+	Assets       []string            `mapstructure:"assets"`
+	HelmChart    string              `mapstructure:"chart"`
+	Filter       []string            `mapstructure:"filter"`
+	Replacements []map[string]string `mapstructure:"replacements"`
 }
 
 type Config struct {
