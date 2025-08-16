@@ -33,7 +33,7 @@ TODO
 ```
 
 
-TODO:  
-- properly template namespaces 
+TODO:
+- template for resource names
 - add templates for kubevirt cr
 - add logic to create pr 

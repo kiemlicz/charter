@@ -5,11 +5,11 @@ import (
 	"context"
 	"github.com/google/go-github/v74/github"
 	"github.com/kiemlicz/kubevirt-charts/internal/common"
-	"gopkg.in/yaml.v3"
 	"io"
-	"k8s.io/client-go/util/jsonpath"
 	"net/http"
-	"reflect"
+	"sigs.k8s.io/kustomize/api/filters/replacement"
+	"sigs.k8s.io/kustomize/api/types"
+	"sigs.k8s.io/kustomize/kyaml/yaml"
 	"strings"
 )
 
@@ -119,65 +119,44 @@ func FilterManifests(manifests *[]*map[string]interface{}, denyKindFilter []stri
 	return &filteredManifests
 }
 
-//func UpdateNamespace(manifests *[]*map[string]interface{}) *[]*map[string]interface{} {
-//	//remove, only use parametrize
-//	//fixme - need something way more clever to update not only medata.namespace but nested namespaces like clusterRoleBinding
-//	for _, m := range *manifests {
-//		metadata, ok := (*m)["metadata"].(map[string]interface{})
-//		if ok {
-//			if _, nsOk := metadata["namespace"].(string); nsOk {
-//				metadata["namespace"] = Namespace
-//			}
-//		}
-//	}
-//	return manifests
-//}
-
-func Parametrize(manifests *[]*map[string]interface{}, replacements *[]map[string]string) (*[]*map[string]interface{}, error) {
-	jsonpathReplacer := jsonpath.New("replacer")
-	for _, replacement := range *replacements {
-		err := jsonpathReplacer.Parse(replacement[ReplacePath])
+func Parametrize(manifests *[]*map[string]any, replacements *string) (*[]*map[string]interface{}, error) {
+	// TODO think how to unmarshall it along with Config, without representing replacements as a string to yaml.unmarshal here...
+	// problem is with yaml tags not respected by Viper
+	var r []types.Replacement
+	err := yaml.Unmarshal([]byte(*replacements), &r)
+	if err != nil {
+		common.Log.Errorf("Failed to unmarshal replacement filter: %v", err)
+		return nil, err
+	}
+	filter := replacement.Filter{
+		Replacements: r,
+	}
+	// Convert manifests to []*yaml.RNode
+	var nodes []*yaml.RNode
+	for _, m := range *manifests {
+		n, err := yaml.FromMap(*m)
 		if err != nil {
-			common.Log.Errorf("Failed to parse JSONPath replacement: %s, %v", replacement, err)
-			continue
+			return nil, err
 		}
-		path := replacement[ReplacePath]
-		newValue := replacement[ReplaceValue]
-		for _, m := range *manifests {
-			results, err := jsonpathReplacer.FindResults(m)
-			if err != nil {
-				common.Log.Warnf("Failed to apply JSONPath replacement %s on manifest: %v", replacement[ReplacePath], err)
-				continue // wut?
-				//return nil, err
-			}
-
-			//fixme minimize this and debug separately cont here
-			for _, result := range results {
-				for _, r := range result {
-					if r.CanSet() {
-						common.Log.Debugf("Applying replacement for path: %s, new value: %s", path, newValue)
-						r.Set(reflect.ValueOf(newValue))
-					} else {
-						common.Log.Warnf("Cannot set value for path: %s", path)
-					}
-				}
-			}
-
-			//if len(results) > 0 && len(results[0]) > 0 {
-			//	common.Log.Debugf("Applying replacement from: %s, to %s on manifest", results[0][0].Interface(), replacement[ReplaceValue])
-			//
-			//	//how to access the value and set it?!
-			//
-			//	if results[0][0].CanSet() {
-			//		results[0][0].Set(reflect.ValueOf(replacement[ReplaceValue]))
-			//	} else {
-			//		common.Log.Errorf("Cannot set value for path: %s", replacement[ReplacePath])
-			//		return nil, fmt.Errorf("cannot set value for path: %s", replacement[ReplacePath])
-			//	}
-			//
-			//}
-		}
+		nodes = append(nodes, n)
 	}
 
-	return manifests, nil
+	// Apply the filter
+	result, err := filter.Filter(nodes)
+	if err != nil {
+		common.Log.Errorf("Failure applying kustomization: %v", err)
+		return nil, err
+	}
+
+	// Convert back to []*map[string]interface{}
+	var out []*map[string]interface{}
+	for _, n := range result {
+		m, err := n.Map()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, &m)
+	}
+
+	return &out, nil
 }
