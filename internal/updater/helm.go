@@ -11,6 +11,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -41,9 +42,10 @@ func (hc *HelmChart) AppVersion() string {
 	return hc.chart.AppVersion()
 }
 
-func (hc *HelmChart) CreateTemplates(newManifests *[]*map[string]interface{}) error {
+func (hc *HelmChart) CreateTemplates(newManifests *[]*map[string]any) error {
 	common.Log.Debugf("Updating: %d Helm Chart manifests in: %s", len(*newManifests), hc.path)
 	templates := make(map[string]*chart.File, len(*newManifests))
+	re := regexp.MustCompile(`'(\{\{.*?\}\})'|"(\{\{.*?\}\})"`)
 
 	for i, manifest := range *newManifests {
 		manifestYAML, err := yaml.Marshal(manifest)
@@ -51,6 +53,10 @@ func (hc *HelmChart) CreateTemplates(newManifests *[]*map[string]interface{}) er
 			common.Log.Errorf("Failed to marshal manifest %d: %v", i, err)
 			return err
 		}
+		manifestYAML = re.ReplaceAllFunc(manifestYAML, func(match []byte) []byte {
+			// Remove the surrounding quotes that break the Helm template syntax
+			return match[1 : len(match)-1]
+		})
 		kind, ok := (*manifest)["kind"].(string)
 		if !ok {
 			common.Log.Errorf("Broken manifest: %s", string(manifestYAML))

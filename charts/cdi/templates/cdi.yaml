@@ -8,11 +8,7 @@ spec:
             - HonorWaitForFirstConsumer
     imagePullPolicy: IfNotPresent
     infra:
-        nodeSelector:
-            kubernetes.io/os: linux
-        tolerations:
-            - key: CriticalAddonsOnly
-              operator: Exists
+        nodeSelector: {{ .Values.cdi.infra.nodeSelector | toYaml | nindent 10 }}
+        tolerations: {{ .Values.cdi.infra.tolerations | toYaml | nindent 10 }}
     workload:
-        nodeSelector:
-            kubernetes.io/os: linux
+        nodeSelector: {{ .Values.cdi.workload.nodeSelector | toYaml | nindent 10 }}

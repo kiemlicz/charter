@@ -101,3 +101,21 @@ githubReleases:
               kind: ClusterRoleBinding
             fieldPaths:
               - subjects.[kind=ServiceAccount].namespace
+      - sourceValue: "{{ .Values.cdi.infra.nodeSelector | toYaml | nindent 10 }}"
+        targets:
+          - select:
+              kind: CDI
+            fieldPaths:
+              - "spec.infra.nodeSelector"
+      - sourceValue: "{{ .Values.cdi.infra.tolerations | toYaml | nindent 10 }}"
+        targets:
+          - select:
+              kind: CDI
+            fieldPaths:
+              - "spec.infra.tolerations"
+      - sourceValue: "{{ .Values.cdi.workload.nodeSelector | toYaml | nindent 10 }}"
+        targets:
+          - select:
+              kind: CDI
+            fieldPaths:
+              - "spec.workload.nodeSelector"
