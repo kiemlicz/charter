@@ -61,7 +61,12 @@ func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
 		return nil
 	}
 
-	manifests, crds, err := updater.DownloadManifests(ctx, client, releaseConfig, releaseData)
+	assetsData, err := updater.DownloadAssets(ctx, client, releaseConfig, releaseData)
+	if err != nil {
+		common.Log.Errorf("Failed to download assets for release %s: %v", releaseConfig.Repo, err)
+		return err
+	}
+	manifests, crds, err := updater.ParseAssets(assetsData)
 	if err != nil {
 		common.Log.Errorf("Failed to collect manifests for release %s: %v", releaseConfig.Repo, err)
 		return err
@@ -99,7 +104,7 @@ func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
 
 	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.HelmChart, len(*manifests))
 
-	modifiedManifests, err := updater.Parametrize(
+	modifiedManifests, _, err := updater.Parametrize(
 		updater.FilterManifests(
 			manifests,
 			releaseConfig.Filter,

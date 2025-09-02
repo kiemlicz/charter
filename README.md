@@ -31,10 +31,3 @@ Currently handles:
 ```bash
 TODO 
 ```
-
-
-TODO:
-- template for resource names
-- add templates for kubevirt cr
-- add logic to create pr 
-- values can't be hardcoded but moved from downloaded manifests
