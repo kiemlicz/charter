@@ -2,6 +2,7 @@ package updater
 
 import (
 	"github.com/kiemlicz/kubevirt-charts/internal/common"
+	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"testing"
@@ -30,8 +31,43 @@ func TestParseAssets(t *testing.T) {
 	})
 }
 
-//func TestParametrizeExtractsValues() {
-//}
+func TestParametrizeExtractsValues(t *testing.T) {
+	testManifests, _, _ := ParseAssets(readTestData(t))
+	testCases := map[string]struct {
+		replacements   string
+		expectedValues string
+	}{
+		"simple": {
+			replacements: `
+      - sourceValue: "{{ .Values.kubevirt.configuration | toYaml | nindent 4 }}"
+        targets:
+          - select:
+              kind: KubeVirt
+            fieldPaths:
+              - "spec.configuration"
+`,
+			expectedValues: `kubevirt:
+  configuration:
+    developerConfiguration:
+      featureGates: []
+`,
+		},
+	}
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			modifiedManifests, extractedValues, err := Parametrize(testManifests, &tc.replacements)
+			if err != nil {
+				t.Errorf("Parametrize() error = %v", err)
+				return
+			}
+			common.Log.Infof("Modified Manifests:\n")
+			for _, m := range *modifiedManifests {
+				common.Log.Infof("---\n%v\n", mustYaml(m))
+			}
+			common.Log.Infof("Extracted Values:\n%v\n", mustYaml(extractedValues))
+		})
+	}
+}
 
 func readTestData(t *testing.T) *map[string][]byte {
 	testdata := make(map[string][]byte)
@@ -52,4 +88,12 @@ func readTestData(t *testing.T) *map[string][]byte {
 	}
 
 	return &testdata
+}
+
+func mustYaml(v any) string {
+	data, err := yaml.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return string(data)
 }
