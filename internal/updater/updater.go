@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -147,7 +146,6 @@ func Parametrize(manifests *[]*map[string]any, mods *[]common.Modification) (*[]
 func applyModifications(manifest *map[string]any, mods *[]common.Modification, encoder yqlib.Encoder) (*map[string]any, *map[string]any, error) {
 	modifiedManifest := make(map[string]any)
 	extractedValues := make(map[string]any)
-	out := new(bytes.Buffer)
 
 	//valuesRegex := regexp.MustCompile(`\{\{.*\.Values\..+\}\}`)
 
@@ -165,18 +163,9 @@ func applyModifications(manifest *map[string]any, mods *[]common.Modification, e
 	}
 
 	for _, mod := range *mods {
-		//if valuesRegex.MatchString(mod) {
-		//	// extract value
-		//}
-		out.Reset()
-		result, err := yqlib.NewAllAtOnceEvaluator().EvaluateNodes(mod.Expression, candidNode)
+		out, err := mod.Modify(encoder, candidNode)
 		if err != nil {
-			common.Log.Errorf("Failed to evaluate manifest '%s': %v", mod, err)
 			return nil, nil, err
-		}
-		printer := yqlib.NewPrinter(encoder, yqlib.NewSinglePrinterWriter(out))
-		if err := printer.PrintResults(result); err != nil {
-			log.Fatal(err)
 		}
 		if err := yaml.Unmarshal(out.Bytes(), &modifiedManifest); err != nil {
 			common.Log.Errorf("Failed to unmarshal modified YAML: %v", err)

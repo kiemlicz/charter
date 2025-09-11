@@ -106,7 +106,7 @@ func TestParametrizeExtractsValues(t *testing.T) {
 			common.Log.Infof("Extracted Values:\n%v\n", mustYaml(extractedValues))
 
 			if !mapContains(extractedValues, &tc.expectedValues, true) {
-				t.Errorf("Parametrize() extractedValues = %v, want = %v", *extractedValues, &tc.expectedValues)
+				t.Errorf("Parametrize() extractedValues = %v, want = %v", *extractedValues, tc.expectedValues)
 				return
 			}
 		})
