@@ -14,11 +14,6 @@ import (
 	"sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
-const (
-	ReplacePath  = "path"
-	ReplaceValue = "value"
-)
-
 func DownloadReleaseMeta(ctx context.Context, client *github.Client, release *common.Release) (*github.RepositoryRelease, error) {
 	repoRelease, response, err := client.Repositories.GetLatestRelease(ctx, release.Owner, release.Repo)
 	if err != nil || response.StatusCode != http.StatusOK {
@@ -143,9 +138,7 @@ func Parametrize(manifests *[]*map[string]any, mods *[]common.Modification) (*[]
 			return nil, nil, err //not continuing on error
 		}
 		modifiedManifests = append(modifiedManifests, m)
-		for k, val := range *v {
-			extractedValues[k] = val // TODO use merge
-		}
+		extractedValues = *common.DeepMerge(&extractedValues, v)
 	}
 
 	return &modifiedManifests, &extractedValues, nil
