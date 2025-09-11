@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"log"
-	"maps"
 	"net/http"
 	"strings"
 
@@ -136,12 +135,12 @@ func FilterManifests(manifests *[]*map[string]interface{}, denyKindFilter []stri
 func Parametrize(manifests *[]*map[string]any, mods *[]common.Modification) (*[]*map[string]any, *map[string]any, error) {
 	modifiedManifests := make([]*map[string]any, 0)
 	extractedValues := make(map[string]any)
+	encoder := yqlib.NewYamlEncoder(yqlib.NewDefaultYamlPreferences())
 
 	for _, manifest := range *manifests {
-		m, v, err := applyModifications(manifest, mods)
+		m, v, err := applyModifications(manifest, mods, encoder)
 		if err != nil {
-			common.Log.Errorf("Failed to apply modifications to manifest: %v", err)
-			return nil, nil, err //FIXME continue on error?
+			return nil, nil, err //not continuing on error
 		}
 		modifiedManifests = append(modifiedManifests, m)
 		for k, val := range *v {
@@ -152,15 +151,14 @@ func Parametrize(manifests *[]*map[string]any, mods *[]common.Modification) (*[]
 	return &modifiedManifests, &extractedValues, nil
 }
 
-func applyModifications(manifest *map[string]any, mods *[]common.Modification) (*map[string]any, *map[string]any, error) {
-	modifiedManifest := maps.Clone(*manifest)
+func applyModifications(manifest *map[string]any, mods *[]common.Modification, encoder yqlib.Encoder) (*map[string]any, *map[string]any, error) {
+	modifiedManifest := make(map[string]any)
 	extractedValues := make(map[string]any)
+	out := new(bytes.Buffer)
 
 	//valuesRegex := regexp.MustCompile(`\{\{.*\.Values\..+\}\}`)
 
-	encoder := yqlib.NewYamlEncoder(yqlib.NewDefaultYamlPreferences())
-	out := new(bytes.Buffer)
-	yamlBytes, _ := yaml.Marshal(modifiedManifest)
+	yamlBytes, _ := yaml.Marshal(manifest)
 	decoder := yqlib.NewYamlDecoder(yqlib.NewDefaultYamlPreferences())
 	err := decoder.Init(bytes.NewReader(yamlBytes))
 	if err != nil {
@@ -177,7 +175,7 @@ func applyModifications(manifest *map[string]any, mods *[]common.Modification) (
 		//if valuesRegex.MatchString(mod) {
 		//	// extract value
 		//}
-
+		out.Reset()
 		result, err := yqlib.NewAllAtOnceEvaluator().EvaluateNodes(mod.Expression, candidNode)
 		if err != nil {
 			common.Log.Errorf("Failed to evaluate manifest '%s': %v", mod, err)
@@ -187,12 +185,10 @@ func applyModifications(manifest *map[string]any, mods *[]common.Modification) (
 		if err := printer.PrintResults(result); err != nil {
 			log.Fatal(err)
 		}
-		var modMap map[string]any //fixme once validated, write directly to modifiedManifest
-		if err := yaml.Unmarshal(out.Bytes(), &modMap); err != nil {
+		if err := yaml.Unmarshal(out.Bytes(), &modifiedManifest); err != nil {
 			common.Log.Errorf("Failed to unmarshal modified YAML: %v", err)
 			return nil, nil, err
 		}
-		modifiedManifest = modMap
 	}
 	return &modifiedManifest, &extractedValues, nil
 }

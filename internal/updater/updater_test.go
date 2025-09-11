@@ -96,7 +96,7 @@ func TestParametrizeExtractsValues(t *testing.T) {
 				t.Errorf("Parametrize() error = %v", err)
 				return
 			}
-			common.Log.Infof("Modified Manifests:\n")
+
 			for _, m := range *modifiedManifests {
 				if !mapContains(m, &tc.expectedChanges, false) {
 					t.Errorf("Parametrize() modified manifest = %v, want changes = %v", mustYaml(m), mustYaml(tc.expectedChanges))
@@ -105,9 +105,8 @@ func TestParametrizeExtractsValues(t *testing.T) {
 			}
 			common.Log.Infof("Extracted Values:\n%v\n", mustYaml(extractedValues))
 
-			var expectedValuesMap map[string]any
-			if !mapContains(extractedValues, &expectedValuesMap, true) {
-				t.Errorf("Parametrize() extractedValues = %v, want = %v", *extractedValues, expectedValuesMap)
+			if !mapContains(extractedValues, &tc.expectedValues, true) {
+				t.Errorf("Parametrize() extractedValues = %v, want = %v", *extractedValues, &tc.expectedValues)
 				return
 			}
 		})
