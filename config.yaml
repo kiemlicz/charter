@@ -11,7 +11,7 @@ githubReleases:
     filter:
       - namespace
       - namespaces
-    replacements: | 
+    replacements: |
       - sourceValue: "{{ .Release.Namespace }}"
         targets:
           - select:
@@ -64,6 +64,12 @@ githubReleases:
     filter:
       - namespace
       - namespaces
+    modifications:
+      - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
+      - expression: '.spec.infra.tolerations'
+        kind: CDI
+        value: "cdi.infra.tolerations"
+  # remove below - no go
     replacements: |
       - sourceValue: "{{ .Release.Namespace }}"
         targets:

@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/google/go-github/v74/github"
-	"github.com/kiemlicz/kubevirt-charts/internal/common"
-	"github.com/kiemlicz/kubevirt-charts/internal/updater"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/google/go-github/v74/github"
+	"github.com/kiemlicz/kubevirt-charts/internal/common"
+	"github.com/kiemlicz/kubevirt-charts/internal/updater"
 )
 
 func main() {
@@ -109,7 +110,7 @@ func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
 			manifests,
 			releaseConfig.Filter,
 		),
-		&releaseConfig.Replacements,
+		&releaseConfig.Modifications,
 	)
 	if err != nil {
 		return err

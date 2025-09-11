@@ -3,15 +3,16 @@ package updater
 import (
 	"bytes"
 	"context"
+	"io"
+	"log"
+	"maps"
+	"net/http"
+	"strings"
+
 	"github.com/google/go-github/v74/github"
 	"github.com/kiemlicz/kubevirt-charts/internal/common"
-	"io"
-	"net/http"
-	"regexp"
-	"sigs.k8s.io/kustomize/api/filters/replacement"
-	"sigs.k8s.io/kustomize/api/types"
+	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"sigs.k8s.io/kustomize/kyaml/yaml"
-	"strings"
 )
 
 const (
@@ -130,81 +131,68 @@ func FilterManifests(manifests *[]*map[string]interface{}, denyKindFilter []stri
 	return &filteredManifests
 }
 
-func find(manifests *map[string]any, s *types.Selector) *[]*map[string]any {
-	selected := make([]*map[string]any, 0)
+// Parametrize applies modifications to manifests
+// returns modified manifests and extracted values
+func Parametrize(manifests *[]*map[string]any, mods *[]common.Modification) (*[]*map[string]any, *map[string]any, error) {
+	modifiedManifests := make([]*map[string]any, 0)
+	extractedValues := make(map[string]any)
 
-	return &selected
+	for _, manifest := range *manifests {
+		m, v, err := applyModifications(manifest, mods)
+		if err != nil {
+			common.Log.Errorf("Failed to apply modifications to manifest: %v", err)
+			return nil, nil, err //FIXME continue on error?
+		}
+		modifiedManifests = append(modifiedManifests, m)
+		for k, val := range *v {
+			extractedValues[k] = val // TODO use merge
+		}
+	}
+
+	return &modifiedManifests, &extractedValues, nil
 }
 
-// extractOriginalValues for all replacements from return key-values that got moved to values.yaml
-// values are nested on extracted .Values expression
-func extractOriginalValues(manifests *[]*map[string]any, replacements *[]types.Replacement) map[string]any {
-	valuesRegex := regexp.MustCompile(`\{\{.*\.Values\..+\}\}`)
+func applyModifications(manifest *map[string]any, mods *[]common.Modification) (*map[string]any, *map[string]any, error) {
+	modifiedManifest := maps.Clone(*manifest)
+	extractedValues := make(map[string]any)
 
-	selector := func(sel *types.Selector) {
-		//sel.Kind
-		//for _, m := range *manifests {
-		//TODO
-		//m[]
+	//valuesRegex := regexp.MustCompile(`\{\{.*\.Values\..+\}\}`)
+
+	encoder := yqlib.NewYamlEncoder(yqlib.NewDefaultYamlPreferences())
+	out := new(bytes.Buffer)
+	yamlBytes, _ := yaml.Marshal(modifiedManifest)
+	decoder := yqlib.NewYamlDecoder(yqlib.NewDefaultYamlPreferences())
+	err := decoder.Init(bytes.NewReader(yamlBytes))
+	if err != nil {
+		common.Log.Errorf("Failed to initialize decoder for manifest: %v", err)
+		return nil, nil, err
+	}
+	candidNode, err := decoder.Decode()
+	if err != nil {
+		common.Log.Errorf("Failed to decode manifest to yaml node: %v", err)
+		return nil, nil, err
+	}
+
+	for _, mod := range *mods {
+		//if valuesRegex.MatchString(mod) {
+		//	// extract value
 		//}
-	}
 
-	for _, repl := range *replacements {
-		sv := repl.SourceValue
-		if sv != nil && *sv != "" && valuesRegex.MatchString(*sv) {
-			//replaced for values
-			common.Log.Infof("Replacing value to %s", *sv)
-
-			for _, ts := range repl.Targets {
-				selector(ts.Select)
-
-			}
-		}
-	}
-
-	return nil //todo
-}
-
-func Parametrize(manifests *[]*map[string]any, replacements *string) (*[]*map[string]any, *map[string]any, error) {
-	// TODO think how to unmarshall it along with Config, without representing replacements as a string to yaml.unmarshal here...
-	// problem is with yaml tags not respected by Viper
-	var r []types.Replacement
-	err := yaml.Unmarshal([]byte(*replacements), &r)
-	if err != nil {
-		common.Log.Errorf("Failed to unmarshal replacement filter: %v", err)
-		return nil, nil, err
-	}
-	filter := replacement.Filter{
-		Replacements: r,
-	}
-	// Convert manifests to []*yaml.RNode
-	var nodes []*yaml.RNode
-	for _, m := range *manifests {
-		n, err := yaml.FromMap(*m)
+		result, err := yqlib.NewAllAtOnceEvaluator().EvaluateNodes(mod.Expression, candidNode)
 		if err != nil {
+			common.Log.Errorf("Failed to evaluate manifest '%s': %v", mod, err)
 			return nil, nil, err
 		}
-		nodes = append(nodes, n)
-	}
-
-	// Apply the filter
-	result, err := filter.Filter(nodes)
-	if err != nil {
-		common.Log.Errorf("Failure applying kustomization: %v", err)
-		return nil, nil, err
-	}
-
-	values := extractOriginalValues(manifests, &r)
-
-	// Convert back to []*map[string]interface{}
-	var out []*map[string]interface{}
-	for _, n := range result {
-		m, err := n.Map()
-		if err != nil {
+		printer := yqlib.NewPrinter(encoder, yqlib.NewSinglePrinterWriter(out))
+		if err := printer.PrintResults(result); err != nil {
+			log.Fatal(err)
+		}
+		var modMap map[string]any //fixme once validated, write directly to modifiedManifest
+		if err := yaml.Unmarshal(out.Bytes(), &modMap); err != nil {
+			common.Log.Errorf("Failed to unmarshal modified YAML: %v", err)
 			return nil, nil, err
 		}
-		out = append(out, &m)
+		modifiedManifest = modMap
 	}
-
-	return &out, &values, nil
+	return &modifiedManifest, &extractedValues, nil
 }

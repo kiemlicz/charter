@@ -1,11 +1,13 @@
 package updater
 
 import (
-	"github.com/kiemlicz/kubevirt-charts/internal/common"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
+
+	"github.com/kiemlicz/kubevirt-charts/internal/common"
+	"gopkg.in/yaml.v3"
 )
 
 func TestMain(m *testing.M) {
@@ -34,39 +36,109 @@ func TestParseAssets(t *testing.T) {
 func TestParametrizeExtractsValues(t *testing.T) {
 	testManifests, _, _ := ParseAssets(readTestData(t))
 	testCases := map[string]struct {
-		replacements   string
-		expectedValues string
+		modifications   []common.Modification
+		expectedValues  map[string]any
+		expectedChanges map[string]any
 	}{
-		"simple": {
-			replacements: `
-      - sourceValue: "{{ .Values.kubevirt.configuration | toYaml | nindent 4 }}"
-        targets:
-          - select:
-              kind: KubeVirt
-            fieldPaths:
-              - "spec.configuration"
-`,
-			expectedValues: `kubevirt:
-  configuration:
-    developerConfiguration:
-      featureGates: []
-`,
+		"empty": {
+			modifications:   []common.Modification{},
+			expectedValues:  map[string]any{},
+			expectedChanges: map[string]any{},
+		},
+		"no_values": {
+			modifications: []common.Modification{
+				*common.NewYqModification(".metadata.namespace |= \"{{ .Release.Namespace }}\""),
+			},
+			expectedValues: map[string]any{}, // none expected as no value extraction
+			expectedChanges: map[string]any{
+				"metadata": map[string]any{
+					"namespace": "{{ .Release.Namespace }}",
+				},
+			},
+		},
+		"simple_values": {
+			modifications: []common.Modification{
+				*common.NewYqModification(".metadata.namespace |= \"{{ .Release.Namespace }}\""),
+				{
+					Expression: ".spec.configuration |= \"{{ .Values.kubevirt.configuration }}\"",
+					Value:      "developerConfiguration.featureGates",
+					Kind:       "kubevirt",
+				},
+			},
+			expectedValues: map[string]any{
+				"kubevirt": map[string]any{
+					"configuration": map[string]any{
+						"developerConfiguration": map[string]any{
+							"featureGates": []any{},
+						},
+					},
+				},
+			}, // none expected as no value extraction
+			expectedChanges: map[string]any{
+				"metadata": map[string]any{
+					"namespace": "{{ .Release.Namespace }}",
+				},
+				"spec": map[string]any{
+					"configuration": "{{ .Values.kubevirt.configuration }}",
+				},
+			},
 		},
 	}
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			modifiedManifests, extractedValues, err := Parametrize(testManifests, &tc.replacements)
+			//given
+
+			//when
+			modifiedManifests, extractedValues, err := Parametrize(testManifests, &tc.modifications)
+
+			//then
 			if err != nil {
 				t.Errorf("Parametrize() error = %v", err)
 				return
 			}
 			common.Log.Infof("Modified Manifests:\n")
 			for _, m := range *modifiedManifests {
-				common.Log.Infof("---\n%v\n", mustYaml(m))
+				if !mapContains(m, &tc.expectedChanges, false) {
+					t.Errorf("Parametrize() modified manifest = %v, want changes = %v", mustYaml(m), mustYaml(tc.expectedChanges))
+					return
+				}
 			}
 			common.Log.Infof("Extracted Values:\n%v\n", mustYaml(extractedValues))
+
+			var expectedValuesMap map[string]any
+			if !mapContains(extractedValues, &expectedValuesMap, true) {
+				t.Errorf("Parametrize() extractedValues = %v, want = %v", *extractedValues, expectedValuesMap)
+				return
+			}
 		})
 	}
+}
+
+func mapContains(mainMap *map[string]any, subMap *map[string]any, mustExist bool) bool {
+	for k, v := range *subMap {
+		mainValue, exists := (*mainMap)[k]
+		if !exists {
+			return !mustExist
+		}
+
+		switch subValueTyped := v.(type) {
+		case map[string]any:
+			mainValueTyped, ok := mainValue.(map[string]any)
+			if !ok || !mapContains(&mainValueTyped, &subValueTyped, mustExist) {
+				return false
+			}
+		case []any:
+			mainValueTyped, ok := mainValue.([]any)
+			if !ok || !reflect.DeepEqual(mainValueTyped, subValueTyped) {
+				return false
+			}
+		default:
+			if mainValue != v {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func readTestData(t *testing.T) *map[string][]byte {

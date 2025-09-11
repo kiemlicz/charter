@@ -2,12 +2,15 @@ package common
 
 import (
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
+
+	glog "gopkg.in/op/go-logging.v1"
 )
 
 var Log *logrus.Logger
@@ -24,6 +27,12 @@ func Setup(logLevel string) {
 	Log.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 	})
+
+	lvl, _ := glog.LogLevel(logLevel)
+	if lvl == glog.DEBUG {
+		lvl = glog.INFO // map debug to info as yq-lib debug is too verbose
+	}
+	glog.SetLevel(lvl, "yq-lib")
 }
 
 func SetupConfig() (*Config, error) {
