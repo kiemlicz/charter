@@ -1,4 +1,4 @@
-package updater
+package packager
 
 import (
 	"os"
@@ -19,22 +19,22 @@ func TestMain(m *testing.M) {
 func TestParseAssets(t *testing.T) {
 	assetsData := readTestData(t)
 	t.Run("ParseAssets", func(t *testing.T) {
-		manifests, crds, err := ParseAssets(assetsData)
+		manifests, err := common.NewManifests(assetsData, "0.0.1")
 		if err != nil {
 			t.Errorf("ParseAssets() error = %v", err)
 			return
 		}
-		if len(*manifests) != 10 {
-			t.Errorf("ParseAssets() manifests = %v, want 10", manifests)
+		if len((*manifests).Manifests) != 10 {
+			t.Errorf("ParseAssets() manifests = %v, want 10", len((*manifests).Manifests))
 		}
-		if len(*crds) != 1 {
-			t.Errorf("ParseAssets() crds = %v, want 1", crds)
+		if len((*manifests).Crds) != 1 {
+			t.Errorf("ParseAssets() crds = %v, want 1", len((*manifests).Crds))
 		}
 	})
 }
 
 func TestParametrizeExtractsValues(t *testing.T) {
-	testManifests, _, _ := ParseAssets(readTestData(t))
+	testManifests, _ := common.NewManifests(readTestData(t), "0.0.1")
 	testCases := map[string]struct {
 		modifications   []common.Modification
 		expectedValues  map[string]any
@@ -60,9 +60,9 @@ func TestParametrizeExtractsValues(t *testing.T) {
 			modifications: []common.Modification{
 				*common.NewYqModification(".metadata.namespace |= \"{{ .Release.Namespace }}\""),
 				{
-					Expression: ".spec.configuration |= \"{{ .Values.kubevirt.configuration }}\"",
-					Value:      "developerConfiguration.featureGates",
-					Kind:       "kubevirt",
+					Expression:     ".spec.configuration |= \"{{ .Values.kubevirt.configuration }}\"",
+					ValuesSelector: "developerConfiguration.featureGates",
+					Kind:           "kubevirt",
 				},
 			},
 			expectedValues: map[string]any{
@@ -89,24 +89,24 @@ func TestParametrizeExtractsValues(t *testing.T) {
 			//given
 
 			//when
-			modifiedManifests, extractedValues, err := Parametrize(testManifests, &tc.modifications)
+			modifiedManifests, extractedValues, err := ChartModifier.ParametrizeManifests(testManifests, &tc.modifications)
 
 			//then
 			if err != nil {
-				t.Errorf("Parametrize() error = %v", err)
+				t.Errorf("ParametrizeManifests() error = %v", err)
 				return
 			}
 
-			for _, m := range *modifiedManifests {
-				if !mapContains(m, &tc.expectedChanges, false) {
-					t.Errorf("Parametrize() modified manifest = %v, want changes = %v", mustYaml(m), mustYaml(tc.expectedChanges))
+			for _, m := range (*modifiedManifests).Manifests {
+				if !mapContains(&m, &tc.expectedChanges, false) {
+					t.Errorf("ParametrizeManifests() modified manifest = %v, want changes = %v", mustYaml(m), mustYaml(tc.expectedChanges))
 					return
 				}
 			}
 			common.Log.Infof("Extracted Values:\n%v\n", mustYaml(extractedValues))
 
 			if !mapContains(extractedValues, &tc.expectedValues, true) {
-				t.Errorf("Parametrize() extractedValues = %v, want = %v", *extractedValues, tc.expectedValues)
+				t.Errorf("ParametrizeManifests() extractedValues = %v, want = %v", *extractedValues, tc.expectedValues)
 				return
 			}
 		})

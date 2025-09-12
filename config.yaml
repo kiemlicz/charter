@@ -8,9 +8,14 @@ githubReleases:
       - "kubevirt-operator.yaml"
       - "kubevirt-cr.yaml"
     chart: "charts/kubevirt"
-    filter:
+    drop:
       - namespace
       - namespaces
+    modifications:
+      - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
+      - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration }}"'
+        kind: KubeVirt
+        valuesSelector: ".spec.configuration"
     replacements: |
       - sourceValue: "{{ .Release.Namespace }}"
         targets:
@@ -61,14 +66,14 @@ githubReleases:
       - "cdi-operator.yaml"
       - "cdi-cr.yaml"
     chart: "charts/cdi"
-    filter:
+    drop:
       - namespace
       - namespaces
     modifications:
       - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
-      - expression: '.spec.infra.tolerations'
-        kind: CDI
-        value: "cdi.infra.tolerations"
+      - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration }}"'
+        kind: KubeVirt
+        value: ""
   # remove below - no go
     replacements: |
       - sourceValue: "{{ .Release.Namespace }}"

@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/go-github/v74/github"
 	"github.com/kiemlicz/kubevirt-charts/internal/common"
-	"github.com/kiemlicz/kubevirt-charts/internal/updater"
+	"github.com/kiemlicz/kubevirt-charts/internal/packager"
+	ghup "github.com/kiemlicz/kubevirt-charts/internal/updater/github"
 )
 
 func main() {
@@ -42,99 +42,45 @@ func main() {
 	wg.Wait()
 }
 
-func HandleRelease(ctx context.Context, releaseConfig *common.Release) error {
-	client := github.NewClient(nil)
-	releaseData, err := updater.DownloadReleaseMeta(ctx, client, releaseConfig)
+func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease) error {
+	currentAppVersion, err := packager.PeekAppVersion(releaseConfig.HelmChart)
 	if err != nil {
-		common.Log.Errorf("Failed to download release metadata for %s: %v", releaseConfig.Repo, err)
+		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.HelmChart, err)
 		return err
 	}
-	releaseVersion := releaseData.TagName
-	common.Log.Infof("Latest release for %s: %s", releaseConfig.Repo, *releaseVersion)
-
-	chart, err := updater.NewHelmChart(releaseConfig.HelmChart)
+	manifests, err := ghup.FetchManifests(ctx, releaseConfig, currentAppVersion)
 	if err != nil {
-		common.Log.Errorf("Failed to load Helm chart for %s: %v", releaseConfig.HelmChart, err)
 		return err
 	}
-	if chart.AppVersion() == *releaseVersion {
-		common.Log.Infof("Chart %s is up to date with version %s", releaseConfig.HelmChart, chart.AppVersion())
+	if manifests == nil {
+		common.Log.Infof("No updates for release %s, skipping", releaseConfig.Repo)
 		return nil
 	}
 
-	assetsData, err := updater.DownloadAssets(ctx, client, releaseConfig, releaseData)
-	if err != nil {
-		common.Log.Errorf("Failed to download assets for release %s: %v", releaseConfig.Repo, err)
-		return err
-	}
-	manifests, crds, err := updater.ParseAssets(assetsData)
-	if err != nil {
-		common.Log.Errorf("Failed to collect manifests for release %s: %v", releaseConfig.Repo, err)
-		return err
-	}
+	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.HelmChart, len(manifests.Manifests))
 
-	if len(*crds) > 0 {
-		crdsChartPath := fmt.Sprintf("%s-crds", releaseConfig.HelmChart)
-		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(*crds), crdsChartPath)
-
-		crdsChart, err := updater.NewHelmChart(crdsChartPath)
-		if err != nil {
-			return err
-		}
-		err = crdsChart.CreateTemplates(crds)
-		if err != nil {
-			return err
-		}
-		err = crdsChart.UpdateVersions(*releaseVersion, true)
-		if err != nil {
-			return err
-		}
-		err = crdsChart.Build()
-		if err != nil {
-			return err
-		}
-		err = crdsChart.Lint()
-		if err != nil {
-			return err
-		}
-		err = crdsChart.Package()
-		if err != nil {
-			return err
-		}
-	}
-
-	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.HelmChart, len(*manifests))
-
-	modifiedManifests, _, err := updater.Parametrize(
-		updater.FilterManifests(
+	modifiedManifests, _, err := packager.ChartModifier.ParametrizeManifests(
+		packager.ChartModifier.FilterManifests(
 			manifests,
-			releaseConfig.Filter,
+			releaseConfig.Drop,
 		),
 		&releaseConfig.Modifications,
 	)
 	if err != nil {
 		return err
 	}
+	_, err = packager.NewHelmChart(releaseConfig.HelmChart, modifiedManifests, false)
+	if err != nil {
+		return err
+	}
 
-	err = chart.CreateTemplates(modifiedManifests)
-	if err != nil {
-		return err
-	}
-	err = chart.UpdateVersions(*releaseVersion, false)
-	if err != nil {
-		return err
-	}
-	err = chart.Build()
-	if err != nil {
-		return err
-	}
-	err = chart.Lint()
-	if err != nil {
-		return err
-	}
-	err = chart.Package()
-	if err != nil {
-		return err
+	if modifiedManifests.ContainsCrds() {
+		crdsChartPath := fmt.Sprintf("%s-crds", releaseConfig.HelmChart)
+		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(modifiedManifests.Crds), crdsChartPath)
+		_, err := packager.NewHelmChart(crdsChartPath, modifiedManifests, true)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -1,7 +1,9 @@
 package common
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -9,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 
 	glog "gopkg.in/op/go-logging.v1"
 )
@@ -89,4 +92,26 @@ func DeepMerge(first *map[string]any, second *map[string]any) *map[string]any {
 	}
 
 	return &out
+}
+
+func ExtractYamls(assetData []byte) (*[]map[string]any, error) {
+	reader := bytes.NewReader(assetData)
+	decoder := yaml.NewDecoder(reader)
+
+	var documents []map[string]any
+	for {
+		var doc map[string]any
+		err := decoder.Decode(&doc)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			Log.Errorf("Failed to decode YAML document for asset: %v", err)
+			return nil, err
+		}
+		documents = append(documents, doc)
+	}
+
+	Log.Infof("Successfully unmarshalled %d documents", len(documents))
+	return &documents, nil
 }

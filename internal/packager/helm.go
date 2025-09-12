@@ -1,7 +1,11 @@
-package updater
+package packager
 
 import (
 	"fmt"
+	"os"
+	"regexp"
+	"strings"
+
 	"github.com/Masterminds/semver/v3"
 	"github.com/kiemlicz/kubevirt-charts/internal/common"
 	"gopkg.in/yaml.v3"
@@ -10,9 +14,6 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint"
-	"os"
-	"regexp"
-	"strings"
 )
 
 const (
@@ -24,25 +25,11 @@ type HelmChart struct {
 	chart *chart.Chart
 }
 
-func NewHelmChart(path string) (*HelmChart, error) {
-	common.Log.Infof("Loading Helm chart from: %s", path)
-	chartObj, err := loader.Load(path)
-	if err != nil {
-		common.Log.Errorf("Failed to load Helm chart from %s: %v", path, err)
-		return nil, err
-	}
-	return &HelmChart{
-			path:  path,
-			chart: chartObj,
-		},
-		nil
-}
-
 func (hc *HelmChart) AppVersion() string {
 	return hc.chart.AppVersion()
 }
 
-func (hc *HelmChart) CreateTemplates(newManifests *[]*map[string]any) error {
+func (hc *HelmChart) createTemplates(newManifests *[]map[string]any) error {
 	common.Log.Debugf("Updating: %d Helm Chart manifests in: %s", len(*newManifests), hc.path)
 	templates := make(map[string]*chart.File, len(*newManifests))
 	re := regexp.MustCompile(`'(\{\{.*?\}\})'|"(\{\{.*?\}\})"`)
@@ -57,7 +44,7 @@ func (hc *HelmChart) CreateTemplates(newManifests *[]*map[string]any) error {
 			// Remove the surrounding quotes that break the Helm template syntax
 			return match[1 : len(match)-1]
 		})
-		kind, ok := (*manifest)["kind"].(string)
+		kind, ok := manifest["kind"].(string)
 		if !ok {
 			common.Log.Errorf("Broken manifest: %s", string(manifestYAML))
 			return fmt.Errorf("manifest %d does not have a valid 'kind' field", i)
@@ -83,10 +70,10 @@ func (hc *HelmChart) CreateTemplates(newManifests *[]*map[string]any) error {
 	return nil
 }
 
-func (hc *HelmChart) UpdateVersions(appVersion string, crds bool) error {
+func (hc *HelmChart) updateVersions(appVersion string, crds bool) error {
 	v, err := semver.NewVersion(appVersion)
 	if err != nil {
-		return fmt.Errorf("invalid appVersion: %s, %w", appVersion, err)
+		return fmt.Errorf("invalid appVersion (must also follow SemVer): %s, %w", appVersion, err)
 	}
 	if !crds {
 		hc.chart.Metadata.AppVersion = appVersion
@@ -96,7 +83,7 @@ func (hc *HelmChart) UpdateVersions(appVersion string, crds bool) error {
 	return nil
 }
 
-func (hc *HelmChart) Build() error {
+func (hc *HelmChart) save() error {
 	err := hc.clearTemplates()
 	if err != nil {
 		common.Log.Errorf("Failed to clear templates directory: %v", err)
@@ -169,4 +156,54 @@ func (hc *HelmChart) clearTemplates() error {
 	}
 
 	return nil
+}
+
+func NewHelmChart(path string, m *common.Manifests, crds bool) (*HelmChart, error) {
+	common.Log.Infof("Loading Helm chart from: %s", path)
+	chartObj, err := loader.Load(path)
+	if err != nil {
+		common.Log.Errorf("Failed to load Helm chart from %s: %v", path, err)
+		return nil, err
+	}
+
+	c := &HelmChart{
+		path:  path,
+		chart: chartObj,
+	}
+
+	if crds {
+		err = c.createTemplates(&m.Crds)
+	} else {
+		err = c.createTemplates(&m.Manifests)
+	}
+	if err != nil {
+		return nil, err
+	}
+	err = c.updateVersions(m.Version, crds)
+	if err != nil {
+		return nil, err
+	}
+	err = c.save()
+	if err != nil {
+		return nil, err
+	}
+	err = c.Lint()
+	if err != nil {
+		return nil, err
+	}
+	err = c.Package()
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func PeekAppVersion(path string) (string, error) {
+	chartObj, err := loader.Load(path)
+	if err != nil {
+		common.Log.Errorf("Failed to load Helm chart from %s: %v", path, err)
+		return "", err
+	}
+	return chartObj.AppVersion(), nil
 }
