@@ -61,7 +61,12 @@ func TestParametrizeExtractsValues(t *testing.T) {
 				*common.NewYqModification(".metadata.namespace |= \"{{ .Release.Namespace }}\""),
 				{
 					Expression:     ".spec.configuration |= \"{{ .Values.kubevirt.configuration }}\"",
-					ValuesSelector: "developerConfiguration.featureGates",
+					ValuesSelector: ".spec.configuration",
+					Kind:           "kubevirt",
+				},
+				{
+					Expression:     ".spec.customizeComponents |= \"{{ .Values.kubevirt.customizeComponents }}\"",
+					ValuesSelector: ".spec.customizeComponents",
 					Kind:           "kubevirt",
 				},
 			},
@@ -72,6 +77,7 @@ func TestParametrizeExtractsValues(t *testing.T) {
 							"featureGates": []any{},
 						},
 					},
+					"customizeComponents": map[string]any{},
 				},
 			}, // none expected as no value extraction
 			expectedChanges: map[string]any{

@@ -16,10 +16,6 @@ import (
 	"helm.sh/helm/v3/pkg/lint"
 )
 
-const (
-	Namespace = "{{ .Release.Namespace }}"
-)
-
 type HelmChart struct {
 	path  string
 	chart *chart.Chart

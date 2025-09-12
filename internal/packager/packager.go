@@ -2,6 +2,8 @@ package packager
 
 import (
 	"bytes"
+	"container/list"
+	"fmt"
 	"strings"
 
 	"github.com/kiemlicz/kubevirt-charts/internal/common"
@@ -37,7 +39,7 @@ func NewModifier() *Modifier {
 	}
 }
 
-func (m Modifier) FilterManifests(manifests *common.Manifests, denyKindFilter []string) *common.Manifests {
+func (m *Modifier) FilterManifests(manifests *common.Manifests, denyKindFilter []string) *common.Manifests {
 	filteredManifests := make([]map[string]any, 0)
 	deniedKinds := make(map[string]bool)
 	for _, filter := range denyKindFilter {
@@ -60,7 +62,7 @@ func (m Modifier) FilterManifests(manifests *common.Manifests, denyKindFilter []
 
 // ParametrizeManifests applies modifications to manifests
 // returns modified manifests and extracted values
-func (m Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]common.Modification) (*common.Manifests, *map[string]any, error) {
+func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]common.Modification) (*common.Manifests, *map[string]any, error) {
 	modifiedManifests := make([]map[string]any, 0)
 	extractedValues := make(map[string]any)
 
@@ -80,7 +82,7 @@ func (m Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]comm
 	}, &extractedValues, nil
 }
 
-func (m Modifier) applyModifications(manifest *map[string]any, mods *[]common.Modification) (*map[string]any, *map[string]any, error) {
+func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.Modification) (*map[string]any, *map[string]any, error) {
 	modifiedManifest := make(map[string]any)
 	extractedValues := make(map[string]any)
 
@@ -97,21 +99,63 @@ func (m Modifier) applyModifications(manifest *map[string]any, mods *[]common.Mo
 	}
 
 	for _, mod := range *mods {
-		m.out.Reset()
+		if mod.Kind != "" {
+			kind, ok := (*manifest)[common.Kind].(string)
+			if !ok || strings.ToLower(kind) != strings.ToLower(mod.Kind) {
+				continue
+			}
+		}
+
+		if mod.ValuesSelector != "" {
+			vals, err := m.evaluator.EvaluateNodes(mod.ValuesSelector, candidNode)
+			if err != nil {
+				common.Log.Errorf("Failed to apply values selector '%s' on manifest: %v", mod.ValuesSelector, err)
+				return nil, nil, err
+			}
+			matches := common.ValuesRegexCompiled.FindStringSubmatch(mod.Expression)
+			if len(matches) > 1 { // matches[0] is the full match, matches[1] is the first capturing group
+				valsMap, err := m.resultToMap(vals)
+				if err != nil {
+					return nil, nil, err
+				}
+				path := strings.Split(matches[1], ".")
+				for i := len(path) - 1; i >= 0; i-- {
+					*valsMap = map[string]any{path[i]: *valsMap}
+				}
+
+				extractedValues = *common.DeepMerge(&extractedValues, valsMap)
+			} else {
+				err = fmt.Errorf("no value path found in expression '%s'", mod.Expression)
+				return nil, nil, err
+			}
+		}
+
 		result, err := m.evaluator.EvaluateNodes(mod.Expression, candidNode)
 		if err != nil {
 			common.Log.Errorf("Failed to apply expression '%s' on manifest: %v", mod.Expression, err)
 			return nil, nil, err
 		}
-		if err := m.printer.PrintResults(result); err != nil {
-			common.Log.Errorf("Failed to print results for expression '%s': %v", mod.Expression, err)
-			return nil, nil, err
-		}
 
-		if err := yaml.Unmarshal(m.out.Bytes(), &modifiedManifest); err != nil {
-			common.Log.Errorf("Failed to unmarshal modified YAML: %v", err)
+		resultManifest, err := m.resultToMap(result)
+		if err != nil {
 			return nil, nil, err
 		}
+		modifiedManifest = *resultManifest
 	}
 	return &modifiedManifest, &extractedValues, nil
+}
+
+func (m *Modifier) resultToMap(result *list.List) (*map[string]any, error) {
+	m.out.Reset()
+	var modifiedManifest map[string]any
+	if err := m.printer.PrintResults(result); err != nil {
+		common.Log.Errorf("Failed to print results for expression: %v", err)
+		return nil, err
+	}
+	if err := yaml.Unmarshal(m.out.Bytes(), &modifiedManifest); err != nil {
+		common.Log.Errorf("Failed to unmarshal modified YAML: %v", err)
+		return nil, err
+	}
+
+	return &modifiedManifest, nil
 }

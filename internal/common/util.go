@@ -75,19 +75,21 @@ func SetupConfig() (*Config, error) {
 func DeepMerge(first *map[string]any, second *map[string]any) *map[string]any {
 	out := make(map[string]any)
 
-	for k, v := range *first {
-		out[k] = v
+	for k, v1 := range *first {
+		out[k] = v1
 	}
 	for k, v2 := range *second {
 		if v1, ok := out[k]; ok {
 			mapV1, ok1 := v1.(map[string]any)
 			mapV2, ok2 := v2.(map[string]any)
 			if ok1 && ok2 {
-				out[k] = DeepMerge(&mapV1, &mapV2)
+				out[k] = *DeepMerge(&mapV1, &mapV2)
 			} else {
 				// overwrite with second, regardless if list or scalar
 				out[k] = v2
 			}
+		} else {
+			out[k] = v2
 		}
 	}
 

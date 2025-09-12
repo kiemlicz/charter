@@ -1,11 +1,8 @@
 package common
 
 import (
-	"bytes"
 	"regexp"
 	"strings"
-
-	"github.com/mikefarah/yq/v4/pkg/yqlib"
 )
 
 const (
@@ -62,7 +59,7 @@ func NewManifests(assetsData *map[string][]byte, version string) (*Manifests, er
 			return nil, err
 		}
 		for _, m := range *maps {
-			if kind, ok := m["kind"].(string); ok && strings.HasPrefix(kind, "CustomResourceDefinition") {
+			if kind, ok := m[Kind].(string); ok && strings.HasPrefix(kind, "CustomResourceDefinition") {
 				crds = append(crds, m)
 			} else {
 				manifests = append(manifests, m)
@@ -84,21 +81,4 @@ func NewYqModification(expression string) *Modification {
 		ValuesSelector: "",
 		Kind:           "",
 	}
-}
-
-// fixme - continue here - add support for kind filtering and value extraction
-func (m Modification) Modify(encoder yqlib.Encoder, manifest *map[string]any, nodes ...*yqlib.CandidateNode) (*bytes.Buffer, error) {
-	out := new(bytes.Buffer)
-
-	result, err := yqlib.NewAllAtOnceEvaluator().EvaluateNodes(m.Expression, nodes...)
-	if err != nil {
-		Log.Errorf("Failed to apply expression '%s' on manifest: %v", m.Expression, err)
-		return nil, err
-	}
-	printer := yqlib.NewPrinter(encoder, yqlib.NewSinglePrinterWriter(out))
-	if err := printer.PrintResults(result); err != nil {
-		Log.Errorf("Failed to print results for expression '%s': %v", m.Expression, err)
-		return nil, err
-	}
-	return out, nil
 }
