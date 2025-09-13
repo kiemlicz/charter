@@ -13,53 +13,12 @@ githubReleases:
       - namespaces
     modifications:
       - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
-      - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration }}"'
+        reject: "ClusterRole|ClusterRoleBinding|PriorityClass"
+      - expression: '(.subjects[] | select(.name == "kubevirt-operator") .namespace) = "{{ .Release.Namespace }}"'
+        kind: "RoleBinding|ClusterRoleBinding"
+      - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration | toYaml | nindent 8 }}"'
         kind: KubeVirt
         valuesSelector: ".spec.configuration"
-    replacements: |
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: Deployment
-            fieldPaths:
-              - "metadata.namespace"
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: KubeVirt
-            fieldPaths:
-              - "metadata.namespace"
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: Role
-            fieldPaths:
-              - "metadata.namespace"
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: RoleBinding
-            fieldPaths:
-              - "metadata.namespace"
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: ServiceAccount
-            fieldPaths:
-              - "metadata.namespace"
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: RoleBinding
-            fieldPaths:
-              - subjects.[kind=ServiceAccount].namespace
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: ClusterRoleBinding
-            fieldPaths:
-              - subjects.[kind=ServiceAccount].namespace
-
   - owner: "kubevirt"
     repo: "containerized-data-importer"
     assets:
@@ -71,62 +30,15 @@ githubReleases:
       - namespaces
     modifications:
       - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
-      - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration }}"'
-        kind: KubeVirt
-        value: ""
-  # remove below - no go
-    replacements: |
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: Deployment
-            fieldPaths:
-              - "metadata.namespace"
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: Role
-            fieldPaths:
-              - "metadata.namespace"
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: RoleBinding
-            fieldPaths:
-              - "metadata.namespace"
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: ServiceAccount
-            fieldPaths:
-              - "metadata.namespace"
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: RoleBinding
-            fieldPaths:
-              - subjects.[kind=ServiceAccount].namespace
-      - sourceValue: "{{ .Release.Namespace }}"
-        targets:
-          - select:
-              kind: ClusterRoleBinding
-            fieldPaths:
-              - subjects.[kind=ServiceAccount].namespace
-      - sourceValue: "{{ .Values.cdi.infra.nodeSelector | toYaml | nindent 10 }}"
-        targets:
-          - select:
-              kind: CDI
-            fieldPaths:
-              - "spec.infra.nodeSelector"
-      - sourceValue: "{{ .Values.cdi.infra.tolerations | toYaml | nindent 10 }}"
-        targets:
-          - select:
-              kind: CDI
-            fieldPaths:
-              - "spec.infra.tolerations"
-      - sourceValue: "{{ .Values.cdi.workload.nodeSelector | toYaml | nindent 10 }}"
-        targets:
-          - select:
-              kind: CDI
-            fieldPaths:
-              - "spec.workload.nodeSelector"
+        reject: "ClusterRole|ClusterRoleBinding|PriorityClass"
+      - expression: '(.subjects[] | select(.name == "cdi-operator") .namespace) = "{{ .Release.Namespace }}"'
+        kind: "RoleBinding|ClusterRoleBinding"
+      - expression: '.spec.config |= "{{ .Values.cdi.config | toYaml | nindent 8 }}"'
+        kind: CDI
+        valuesSelector: ".spec.config"
+      - expression: '.spec.infra |= "{{ .Values.cdi.infra | toYaml | nindent 8 }}"'
+        kind: CDI
+        valuesSelector: ".spec.infra"
+      - expression: '.spec.workload |= "{{ .Values.cdi.workload | toYaml | nindent 8 }}"'
+        kind: CDI
+        valuesSelector: ".spec.workload"

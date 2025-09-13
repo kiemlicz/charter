@@ -59,7 +59,7 @@ func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease) err
 
 	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.HelmChart, len(manifests.Manifests))
 
-	modifiedManifests, _, err := packager.ChartModifier.ParametrizeManifests(
+	modifiedManifests, extractedValues, err := packager.ChartModifier.ParametrizeManifests(
 		packager.ChartModifier.FilterManifests(
 			manifests,
 			releaseConfig.Drop,
@@ -69,7 +69,7 @@ func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease) err
 	if err != nil {
 		return err
 	}
-	_, err = packager.NewHelmChart(releaseConfig.HelmChart, modifiedManifests, false)
+	_, err = packager.NewHelmChart(releaseConfig.HelmChart, modifiedManifests, extractedValues, false)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease) err
 	if modifiedManifests.ContainsCrds() {
 		crdsChartPath := fmt.Sprintf("%s-crds", releaseConfig.HelmChart)
 		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(modifiedManifests.Crds), crdsChartPath)
-		_, err := packager.NewHelmChart(crdsChartPath, modifiedManifests, true)
+		_, err := packager.NewHelmChart(crdsChartPath, modifiedManifests, new(map[string]any), true)
 		if err != nil {
 			return err
 		}

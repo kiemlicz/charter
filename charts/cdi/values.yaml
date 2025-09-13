@@ -1,10 +1,14 @@
 cdi:
-  infra:
-    nodeSelector:
-      kubernetes.io/os: linux
-    tolerations:
-      - key: CriticalAddonsOnly
-        operator: Exists
-  workload:
-    nodeSelector:
-      kubernetes.io/os: linux
+    config:
+        featureGates:
+            - HonorWaitForFirstConsumer
+            - WebhookPvcRendering
+    infra:
+        nodeSelector:
+            kubernetes.io/os: linux
+        tolerations:
+            - key: CriticalAddonsOnly
+              operator: Exists
+    workload:
+        nodeSelector:
+            kubernetes.io/os: linux

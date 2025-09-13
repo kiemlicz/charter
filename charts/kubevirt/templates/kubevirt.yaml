@@ -5,9 +5,7 @@ metadata:
     namespace: {{ .Release.Namespace }}
 spec:
     certificateRotateStrategy: {}
-    configuration:
-        developerConfiguration:
-            featureGates: []
+    configuration: {{ .Values.kubevirt.configuration | toYaml | nindent 8 }}
     customizeComponents: {}
     imagePullPolicy: IfNotPresent
     workloadUpdateStrategy: {}

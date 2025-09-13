@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/list"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/kiemlicz/kubevirt-charts/internal/common"
@@ -83,11 +84,17 @@ func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]com
 }
 
 func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.Modification) (*map[string]any, *map[string]any, error) {
-	modifiedManifest := make(map[string]any)
+	common.Log.Debugf("Applying %d modifications to manifest of kind: %v", len(*mods), (*manifest)[common.Kind])
+
+	modifiedManifest := *manifest
 	extractedValues := make(map[string]any)
 
-	yamlBytes, _ := yaml.Marshal(manifest)
-	err := m.decoder.Init(bytes.NewReader(yamlBytes))
+	yamlBytes, err := yaml.Marshal(manifest)
+	if err != nil {
+		common.Log.Errorf("Failed to marshal manifest to YAML during applying modifications: %v", err)
+		return nil, nil, err
+	}
+	err = m.decoder.Init(bytes.NewReader(yamlBytes))
 	if err != nil {
 		common.Log.Errorf("Failed to initialize decoder for manifest: %v", err)
 		return nil, nil, err
@@ -100,8 +107,26 @@ func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 
 	for _, mod := range *mods {
 		if mod.Kind != "" {
+			rc, err := regexp.Compile(mod.Kind)
+			if err != nil {
+				common.Log.Errorf("Failed to compile kind regex '%s': %v", mod.Kind, err)
+				return nil, nil, err
+			}
 			kind, ok := (*manifest)[common.Kind].(string)
-			if !ok || strings.ToLower(kind) != strings.ToLower(mod.Kind) {
+			if !ok || !rc.MatchString(kind) {
+				continue
+			}
+		}
+
+		if mod.Reject != "" {
+			kind, ok := (*manifest)[common.Kind].(string)
+			rc, err := regexp.Compile(mod.Reject)
+			if err != nil {
+				common.Log.Errorf("Failed to compile reject regex '%s': %v", mod.Kind, err)
+				return nil, nil, err
+			}
+			if ok && rc.MatchString(kind) {
+				common.Log.Debugf("Omitting manifest of kind '%s' due to reject rule", kind)
 				continue
 			}
 		}

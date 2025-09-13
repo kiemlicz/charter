@@ -79,15 +79,42 @@ func (hc *HelmChart) updateVersions(appVersion string, crds bool) error {
 	return nil
 }
 
-func (hc *HelmChart) save() error {
+func (hc *HelmChart) save(vals *map[string]any) error {
 	err := hc.clearTemplates()
 	if err != nil {
 		common.Log.Errorf("Failed to clear templates directory: %v", err)
 		return err
 	}
+
 	dir := strings.SplitN(hc.path, "/", 2)[0]
 	common.Log.Infof("Saving Helm chart to: %s", dir)
-	return chartutil.SaveDir(hc.chart, dir)
+	err = chartutil.SaveDir(hc.chart, dir)
+	if err != nil {
+		common.Log.Errorf("Failed to save Helm chart to %s: %v", dir, err)
+		return err
+	}
+
+	// saving values separately as SaveDir doesn't respect the current hc.chart.Values
+	mergedValues, err := chartutil.CoalesceValues(hc.chart, *vals)
+	if err != nil {
+		common.Log.Errorf("Failed to merge values: %v", err)
+		return err
+	}
+	hc.chart.Values = mergedValues
+	if len(hc.chart.Values) > 0 {
+		valuesData, err := yaml.Marshal(hc.chart.Values)
+		if err != nil {
+			common.Log.Errorf("failed to marshal values: %v", err)
+			return err
+		}
+		valuesPath := fmt.Sprintf("%s/%s", hc.path, chartutil.ValuesfileName)
+		if err := os.WriteFile(valuesPath, valuesData, 0644); err != nil {
+			common.Log.Errorf("failed to write values.yaml: %v", err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (hc *HelmChart) Lint() error {
@@ -98,7 +125,7 @@ func (hc *HelmChart) Lint() error {
 		Major:   "1",
 		Minor:   "30",
 	}
-	common.Log.Infof("Linting Helm chart in: %s against: %s", hc.path, k8sVersionString)
+	common.Log.Infof("Linting Helm chart in: %s against Kubernetes version: %s", hc.path, k8sVersionString)
 	linter := lint.AllWithKubeVersion(hc.path, hc.chart.Values, lintNamespace, &lintK8sVersion)
 
 	if len(linter.Messages) > 0 {
@@ -154,7 +181,7 @@ func (hc *HelmChart) clearTemplates() error {
 	return nil
 }
 
-func NewHelmChart(path string, m *common.Manifests, crds bool) (*HelmChart, error) {
+func NewHelmChart(path string, m *common.Manifests, values *map[string]any, crds bool) (*HelmChart, error) {
 	common.Log.Infof("Loading Helm chart from: %s", path)
 	chartObj, err := loader.Load(path)
 	if err != nil {
@@ -179,7 +206,8 @@ func NewHelmChart(path string, m *common.Manifests, crds bool) (*HelmChart, erro
 	if err != nil {
 		return nil, err
 	}
-	err = c.save()
+
+	err = c.save(values)
 	if err != nil {
 		return nil, err
 	}

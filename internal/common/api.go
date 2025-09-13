@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	ValuesRegex = `\{\{\s*\.Values\.([^\s\}]+)\s*\}\}`
+	ValuesRegex = `\{\{\s*\.Values\.([^\s\}]+).*\}\}`
 	Kind        = "kind"
 )
 
@@ -36,6 +36,7 @@ type Modification struct {
 	Expression     string `mapstructure:"expression"`
 	ValuesSelector string `mapstructure:"valuesSelector"`
 	Kind           string `mapstructure:"kind"` // if set, apply modification only to resources of this kind
+	Reject         string `mapstructure:"reject"`
 }
 
 type Manifests struct {

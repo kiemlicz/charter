@@ -119,28 +119,67 @@ func TestParametrizeExtractsValues(t *testing.T) {
 	}
 }
 
+func TestParametrizeListElement(t *testing.T) {
+	//given
+	testManifests, _ := common.NewManifests(readTestData(t), "0.0.1")
+	mods := []common.Modification{
+		*common.NewYqModification(".metadata.namespace |= \"{{ .Release.Namespace }}\""),
+		{
+			Expression: "(.subjects[] | select(.name == \"kubevirt-operator\") .namespace) = \"{{ .Release.Namespace }}\"",
+			Kind:       "RoleBinding",
+		},
+	}
+
+	//when
+	modifiedManifests, _, err := ChartModifier.ParametrizeManifests(testManifests, &mods)
+
+	//then
+	if err != nil {
+		t.Errorf("ParametrizeManifests() error = %v", err)
+		return
+	}
+
+	expectedChanges := map[string]any{
+		"kind": "RoleBinding",
+		"metadata": map[string]any{
+			"namespace": "{{ .Release.Namespace }}",
+		},
+		"subjects": []any{
+			map[string]any{
+				"kind":      "ServiceAccount",
+				"name":      "kubevirt-operator",
+				"namespace": "{{ .Release.Namespace }}",
+			},
+		},
+	}
+
+	for _, m := range (*modifiedManifests).Manifests {
+		if m["kind"] == "RoleBinding" && m["metadata"].(map[string]any)["name"] == "kubevirt-operator-rolebinding" {
+			if !mapContains(&m, &expectedChanges, true) {
+				t.Errorf("ParametrizeManifests() modified manifest = \n%v, wanted = \n%v", mustYaml(m), mustYaml(expectedChanges))
+			}
+			return
+		}
+	}
+	t.Errorf("ParametrizeManifests() did not find a matching RoleBinding manifest or did not match expected changes")
+}
+
 func mapContains(mainMap *map[string]any, subMap *map[string]any, mustExist bool) bool {
-	for k, v := range *subMap {
-		mainValue, exists := (*mainMap)[k]
+	for k, subVal := range *subMap {
+		mainVal, exists := (*mainMap)[k]
 		if !exists {
 			return !mustExist
 		}
 
-		switch subValueTyped := v.(type) {
-		case map[string]any:
-			mainValueTyped, ok := mainValue.(map[string]any)
-			if !ok || !mapContains(&mainValueTyped, &subValueTyped, mustExist) {
+		subMapVal, subIsMap := subVal.(map[string]any)
+		mainMapVal, mainIsMap := mainVal.(map[string]any)
+
+		if subIsMap && mainIsMap {
+			if !mapContains(&mainMapVal, &subMapVal, mustExist) {
 				return false
 			}
-		case []any:
-			mainValueTyped, ok := mainValue.([]any)
-			if !ok || !reflect.DeepEqual(mainValueTyped, subValueTyped) {
-				return false
-			}
-		default:
-			if mainValue != v {
-				return false
-			}
+		} else if !reflect.DeepEqual(mainVal, subVal) {
+			return false
 		}
 	}
 	return true
