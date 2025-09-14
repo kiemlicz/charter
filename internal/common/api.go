@@ -6,18 +6,24 @@ import (
 )
 
 const (
-	ValuesRegex = `\{\{\s*\.Values\.([^\s\}]+).*\}\}`
-	Kind        = "kind"
+	ValuesRegex                 = `\{\{\s*\.Values\.([^\s\}]+).*\}\}`
+	Kind                        = "kind"
+	ModeUpdate  ModeOfOperation = "update"
+	ModePublish ModeOfOperation = "publish"
 )
 
 var (
 	ValuesRegexCompiled = regexp.MustCompile(ValuesRegex)
 )
 
+type ModeOfOperation string
+
 type Config struct {
 	Log struct {
 		Level string `mapstructure:"level"`
 	} `mapstructure:"log"`
+
+	ModeOfOperation ModeOfOperation `mapstructure:"mode"`
 
 	Helm HelmSettings `mapstructure:"helm"`
 

@@ -43,6 +43,7 @@ func SetupConfig() (*Config, error) {
 
 	v.SetConfigFile("config.yaml") // default config file full path, not adding paths as they pick single file
 
+	pflag.String("mode", "", "update|publish mode (overrides yaml file)")
 	pflag.String("log.level", "", "log level (overrides yaml file)")
 	pflag.Parse()
 	_ = v.BindPFlags(pflag.CommandLine)

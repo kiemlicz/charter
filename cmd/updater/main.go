@@ -21,6 +21,11 @@ func main() {
 
 	common.Setup(config.Log.Level)
 
+	if config.ModeOfOperation == "" {
+		common.Log.Info("No operation specified, use --mode=publish or --mode=update")
+		return
+	}
+
 	var wg sync.WaitGroup
 	mainCtx := context.Background()
 
@@ -30,11 +35,17 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := HandleRelease(ctx, &release, &config.Helm)
-			if err != nil {
-				common.Log.Errorf("Error handling release %s: %v", release.Repo, err)
-			} else {
-				common.Log.Infof("Successfully handled release %s", release.Repo)
+			if config.ModeOfOperation == common.ModeUpdate {
+				err := UpdateChart(ctx, &release, &config.Helm)
+				if err != nil {
+					common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
+					return
+				} else {
+					common.Log.Infof("Successfully generated Chart for release: %s", release.Repo)
+				}
+				CreatePr(ctx, &release, &config.Helm)
+			} else if config.ModeOfOperation == common.ModePublish {
+				PublishCharts(ctx, &release, &config.Helm)
 			}
 		}()
 	}
@@ -42,7 +53,9 @@ func main() {
 	wg.Wait()
 }
 
-func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) error {
+func UpdateChart(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) error {
+	common.Log.Infof("Updating release: %s", releaseConfig.Repo)
+
 	currentAppVersion, err := packager.PeekAppVersion(helmSettings.SrcDir, releaseConfig.ChartName)
 	if err != nil {
 		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.ChartName, err)
@@ -84,4 +97,17 @@ func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease, hel
 	}
 
 	return nil
+}
+
+// CreatePr creates a PR with the updated charts
+// creates branch for release
+// commits and pushes changes
+// creates PR against main branch
+func CreatePr(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) {
+
+}
+
+func PublishCharts(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) {
+	common.Log.Infof("Publishing Chart for release: %s", releaseConfig.Repo)
+
 }

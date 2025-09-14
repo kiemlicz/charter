@@ -1,6 +1,9 @@
 log:
   level: warn
 
+# driven from CLI
+mode: "" # one of "update", "publish"
+
 helm:
   srcDir: "charts"
   targetDir: "target"
