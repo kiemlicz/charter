@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kiemlicz/kubevirt-charts/internal/common"
-	"github.com/kiemlicz/kubevirt-charts/internal/packager"
-	ghup "github.com/kiemlicz/kubevirt-charts/internal/updater/github"
+	"github.com/kiemlicz/charter/internal/common"
+	"github.com/kiemlicz/charter/internal/packager"
+	ghup "github.com/kiemlicz/charter/internal/updater/github"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func main() {
 }
 
 func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) error {
-	currentAppVersion, err := packager.PeekAppVersion(helmSettings.Dir, releaseConfig.ChartName)
+	currentAppVersion, err := packager.PeekAppVersion(helmSettings.SrcDir, releaseConfig.ChartName)
 	if err != nil {
 		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.ChartName, err)
 		return err

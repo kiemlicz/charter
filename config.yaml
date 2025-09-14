@@ -2,7 +2,8 @@ log:
   level: warn
 
 helm:
-  dir: "charts"
+  srcDir: "charts"
+  targetDir: "target"
   lintK8s: "1.30.0"
 
 githubReleases:
@@ -16,7 +17,7 @@ githubReleases:
       - namespace
       - namespaces
     modifications:
-#      - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}"' # not (yet?) extracting to different name
+      #      - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}"' # not (yet?) extracting to different name
       - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
         reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
       - expression: '(.subjects[] | select(.name == "kubevirt-operator") .namespace) = "{{ .Release.Namespace }}"'
@@ -36,7 +37,7 @@ githubReleases:
       - namespace
       - namespaces
     modifications:
-#      - expression: '.metadata.name |= "{{ include \"cdi.fullname\" . }}"' # not (yet?) extracting to different name
+      #      - expression: '.metadata.name |= "{{ include \"cdi.fullname\" . }}"' # not (yet?) extracting to different name
       - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
         reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
       - expression: '(.subjects[] | select(.name == "cdi-operator") .namespace) = "{{ .Release.Namespace }}"'

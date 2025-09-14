@@ -1,4 +1,4 @@
-module github.com/kiemlicz/kubevirt-charts
+module github.com/kiemlicz/charter
 
 go 1.24.0
 

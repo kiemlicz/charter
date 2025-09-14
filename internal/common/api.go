@@ -25,8 +25,9 @@ type Config struct {
 }
 
 type HelmSettings struct {
-	Dir     string `mapstructure:"dir"`
-	LintK8s string `mapstructure:"lintK8s"`
+	SrcDir    string `mapstructure:"srcDir"`
+	TargetDir string `mapstructure:"targetDir"`
+	LintK8s   string `mapstructure:"lintK8s"`
 }
 
 type GithubRelease struct {

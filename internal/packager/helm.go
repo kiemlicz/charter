@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/kiemlicz/kubevirt-charts/internal/common"
+	"github.com/kiemlicz/charter/internal/common"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -153,25 +153,29 @@ func (hc *HelmChart) Lint(settings *common.HelmSettings) error {
 	return nil
 }
 
-func (hc *HelmChart) Package() error {
-	destDir := "target"
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+func (hc *HelmChart) Package(settings *common.HelmSettings) (string, error) {
+	if err := os.MkdirAll(settings.TargetDir, 0755); err != nil {
 		common.Log.Errorf("failed to create target directory: %v", err)
-		return err
+		return "", err
 	}
 
 	client := action.NewPackage()
-	client.Destination = destDir
+	client.Destination = settings.TargetDir
 
 	common.Log.Infof("Packaging chart %s", hc.path)
 	path, err := client.Run(hc.path, nil)
 	if err != nil {
 		common.Log.Errorf("failed to package chart: %v", err)
-		return err
+		return "", err
 	}
 
 	common.Log.Infof("Successfully packaged chart to %s", path)
-	return nil
+	return path, nil
+}
+
+func (hc *HelmChart) Push(chartRef, remote string) (string, error) {
+	push := action.NewPushWithOpts()
+	return push.Run(chartRef, remote)
 }
 
 func (hc *HelmChart) clearTemplates() error {
@@ -194,9 +198,9 @@ func (hc *HelmChart) clearTemplates() error {
 }
 
 func NewHelmChart(helmSettings *common.HelmSettings, chartName string, m *common.Manifests, values *map[string]any, isCrdsOnly bool) (*HelmChart, error) {
-	chartPath, err := chartutil.Create(chartName, helmSettings.Dir) //overwrites
+	chartPath, err := chartutil.Create(chartName, helmSettings.SrcDir) //overwrites
 	if err != nil {
-		common.Log.Errorf("Failed to create Helm chart in %s: %v", helmSettings.Dir, err)
+		common.Log.Errorf("Failed to create Helm chart in %s: %v", helmSettings.SrcDir, err)
 		return nil, err
 	}
 	common.Log.Infof("Created Helm chart: %s", chartPath)

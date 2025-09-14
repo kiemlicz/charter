@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/kiemlicz/kubevirt-charts/internal/common"
+	"github.com/kiemlicz/charter/internal/common"
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"gopkg.in/yaml.v3"
 )

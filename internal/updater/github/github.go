@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/google/go-github/v74/github"
-	"github.com/kiemlicz/kubevirt-charts/internal/common"
+	"github.com/kiemlicz/charter/internal/common"
 )
 
 func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, existingAppVersion string) (*common.Manifests, error) {

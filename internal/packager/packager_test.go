@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/kiemlicz/kubevirt-charts/internal/common"
+	"github.com/kiemlicz/charter/internal/common"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,20 +17,23 @@ func TestMain(m *testing.M) {
 }
 
 func TestParseAssets(t *testing.T) {
+	//given
 	assetsData := readTestData(t)
-	t.Run("ParseAssets", func(t *testing.T) {
-		manifests, err := common.NewManifests(assetsData, "0.0.1")
-		if err != nil {
-			t.Errorf("ParseAssets() error = %v", err)
-			return
-		}
-		if len((*manifests).Manifests) != 10 {
-			t.Errorf("ParseAssets() manifests = %v, want 10", len((*manifests).Manifests))
-		}
-		if len((*manifests).Crds) != 1 {
-			t.Errorf("ParseAssets() crds = %v, want 1", len((*manifests).Crds))
-		}
-	})
+
+	//when
+	manifests, err := common.NewManifests(assetsData, "0.0.1")
+
+	//then
+	if err != nil {
+		t.Errorf("ParseAssets() error = %v", err)
+		return
+	}
+	if len((*manifests).Manifests) != 18 {
+		t.Errorf("ParseAssets() manifests = %v, want 10", len((*manifests).Manifests))
+	}
+	if len((*manifests).Crds) != 2 {
+		t.Errorf("ParseAssets() crds = %v, want 1", len((*manifests).Crds))
+	}
 }
 
 func TestParametrizeExtractsValues(t *testing.T) {
@@ -62,12 +65,12 @@ func TestParametrizeExtractsValues(t *testing.T) {
 				{
 					Expression:     ".spec.configuration |= \"{{ .Values.kubevirt.configuration }}\"",
 					ValuesSelector: ".spec.configuration",
-					Kind:           "kubevirt",
+					Kind:           "KubeVirt",
 				},
 				{
 					Expression:     ".spec.customizeComponents |= \"{{ .Values.kubevirt.customizeComponents }}\"",
 					ValuesSelector: ".spec.customizeComponents",
-					Kind:           "kubevirt",
+					Kind:           "KubeVirt",
 				},
 			},
 			expectedValues: map[string]any{
@@ -85,7 +88,8 @@ func TestParametrizeExtractsValues(t *testing.T) {
 					"namespace": "{{ .Release.Namespace }}",
 				},
 				"spec": map[string]any{
-					"configuration": "{{ .Values.kubevirt.configuration }}",
+					"configuration":       "{{ .Values.kubevirt.configuration }}",
+					"customizeComponents": "{{ .Values.kubevirt.customizeComponents }}",
 				},
 			},
 		},
@@ -99,20 +103,20 @@ func TestParametrizeExtractsValues(t *testing.T) {
 
 			//then
 			if err != nil {
-				t.Errorf("ParametrizeManifests() error = %v", err)
+				t.Errorf("TestParametrizeExtractsValues() error = %v", err)
 				return
 			}
 
 			for _, m := range (*modifiedManifests).Manifests {
 				if !mapContains(&m, &tc.expectedChanges, false) {
-					t.Errorf("ParametrizeManifests() modified manifest = %v, want changes = %v", mustYaml(m), mustYaml(tc.expectedChanges))
+					t.Errorf("TestParametrizeExtractsValues() modified manifest:\n%v, but wanted:\n%v", mustYaml(m), mustYaml(tc.expectedChanges))
 					return
 				}
 			}
 			common.Log.Infof("Extracted Values:\n%v\n", mustYaml(extractedValues))
 
 			if !mapContains(extractedValues, &tc.expectedValues, true) {
-				t.Errorf("ParametrizeManifests() extractedValues = %v, want = %v", *extractedValues, tc.expectedValues)
+				t.Errorf("TestParametrizeExtractsValues() extractedValues:\n%v, but wanted:\n%v", *extractedValues, tc.expectedValues)
 				return
 			}
 		})
@@ -156,7 +160,7 @@ func TestParametrizeListElement(t *testing.T) {
 	for _, m := range (*modifiedManifests).Manifests {
 		if m["kind"] == "RoleBinding" && m["metadata"].(map[string]any)["name"] == "kubevirt-operator-rolebinding" {
 			if !mapContains(&m, &expectedChanges, true) {
-				t.Errorf("ParametrizeManifests() modified manifest = \n%v, wanted = \n%v", mustYaml(m), mustYaml(expectedChanges))
+				t.Errorf("ParametrizeManifests() modified manifest: \n%v,but wanted:\n%v", mustYaml(m), mustYaml(expectedChanges))
 			}
 			return
 		}
