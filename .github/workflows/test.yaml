@@ -1,4 +1,4 @@
-name: Test KubeVirt Chart builder
+name: Tests
 # WIP
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Test KubeVirt Chart builder
+    name: Test Chart Generator
 
     runs-on: ubuntu-latest
 
