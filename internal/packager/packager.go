@@ -20,23 +20,17 @@ type Modifier struct {
 	encoder   yqlib.Encoder
 	decoder   yqlib.Decoder
 	evaluator yqlib.Evaluator
-	out       *bytes.Buffer
-	printer   yqlib.Printer
 }
 
 func NewModifier() *Modifier {
-	out := new(bytes.Buffer)
 	encoder := yqlib.NewYamlEncoder(yqlib.NewDefaultYamlPreferences())
 	decoder := yqlib.NewYamlDecoder(yqlib.NewDefaultYamlPreferences())
 	evaluator := yqlib.NewAllAtOnceEvaluator()
-	printer := yqlib.NewPrinter(encoder, yqlib.NewSinglePrinterWriter(out))
 
 	return &Modifier{
 		encoder:   encoder,
 		decoder:   decoder,
 		evaluator: evaluator,
-		out:       out,
-		printer:   printer,
 	}
 }
 
@@ -65,6 +59,7 @@ func (m *Modifier) FilterManifests(manifests *common.Manifests, denyKindFilter [
 // returns modified manifests and extracted values
 func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]common.Modification) (*common.Manifests, *map[string]any, error) {
 	modifiedManifests := make([]map[string]any, 0)
+	modifiedCrds := make([]map[string]any, 0)
 	extractedValues := make(map[string]any)
 
 	for _, manifest := range manifests.Manifests {
@@ -76,8 +71,16 @@ func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]com
 		extractedValues = *common.DeepMerge(&extractedValues, v)
 	}
 
+	for _, crd := range manifests.Crds {
+		m, _, err := m.applyModifications(&crd, mods)
+		if err != nil {
+			return nil, nil, err //not continuing on error
+		}
+		modifiedCrds = append(modifiedCrds, *m)
+	}
+
 	return &common.Manifests{
-		Crds:      manifests.Crds,
+		Crds:      modifiedCrds,
 		Manifests: modifiedManifests,
 		Version:   manifests.Version,
 	}, &extractedValues, nil
@@ -171,14 +174,15 @@ func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 }
 
 func (m *Modifier) resultToMap(result *list.List) (*map[string]any, error) {
-	m.out.Reset()
+	out := new(bytes.Buffer)
+	printer := yqlib.NewPrinter(m.encoder, yqlib.NewSinglePrinterWriter(out))
 	var modifiedManifest map[string]any
-	if err := m.printer.PrintResults(result); err != nil {
+	if err := printer.PrintResults(result); err != nil {
 		common.Log.Errorf("Failed to print results for expression: %v", err)
 		return nil, err
 	}
-	if err := yaml.Unmarshal(m.out.Bytes(), &modifiedManifest); err != nil {
-		common.Log.Errorf("Failed to unmarshal modified YAML: %v", err)
+	if err := yaml.Unmarshal(out.Bytes(), &modifiedManifest); err != nil {
+		common.Log.Errorf("Failed to unmarshal modified YAML:\n%s\n%v", out.String(), err)
 		return nil, err
 	}
 

@@ -30,7 +30,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := HandleRelease(ctx, &release)
+			err := HandleRelease(ctx, &release, &config.Helm)
 			if err != nil {
 				common.Log.Errorf("Error handling release %s: %v", release.Repo, err)
 			} else {
@@ -42,10 +42,10 @@ func main() {
 	wg.Wait()
 }
 
-func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease) error {
-	currentAppVersion, err := packager.PeekAppVersion(releaseConfig.HelmChart)
+func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) error {
+	currentAppVersion, err := packager.PeekAppVersion(helmSettings.Dir, releaseConfig.ChartName)
 	if err != nil {
-		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.HelmChart, err)
+		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.ChartName, err)
 		return err
 	}
 	manifests, err := ghup.FetchManifests(ctx, releaseConfig, currentAppVersion)
@@ -57,7 +57,7 @@ func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease) err
 		return nil
 	}
 
-	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.HelmChart, len(manifests.Manifests))
+	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.ChartName, len(manifests.Manifests))
 
 	modifiedManifests, extractedValues, err := packager.ChartModifier.ParametrizeManifests(
 		packager.ChartModifier.FilterManifests(
@@ -69,15 +69,15 @@ func HandleRelease(ctx context.Context, releaseConfig *common.GithubRelease) err
 	if err != nil {
 		return err
 	}
-	_, err = packager.NewHelmChart(releaseConfig.HelmChart, modifiedManifests, extractedValues, false)
+	_, err = packager.NewHelmChart(helmSettings, releaseConfig.ChartName, modifiedManifests, extractedValues, false)
 	if err != nil {
 		return err
 	}
 
 	if modifiedManifests.ContainsCrds() {
-		crdsChartPath := fmt.Sprintf("%s-crds", releaseConfig.HelmChart)
-		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(modifiedManifests.Crds), crdsChartPath)
-		_, err := packager.NewHelmChart(crdsChartPath, modifiedManifests, new(map[string]any), true)
+		crdsChartName := fmt.Sprintf("%s-crds", releaseConfig.ChartName)
+		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(modifiedManifests.Crds), crdsChartName)
+		_, err := packager.NewHelmChart(helmSettings, crdsChartName, modifiedManifests, new(map[string]any), true)
 		if err != nil {
 			return err
 		}

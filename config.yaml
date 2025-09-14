@@ -1,36 +1,44 @@
 log:
   level: warn
 
+helm:
+  dir: "charts"
+  lintK8s: "1.30.0"
+
 githubReleases:
   - owner: "kubevirt"
     repo: "kubevirt"
     assets:
       - "kubevirt-operator.yaml"
       - "kubevirt-cr.yaml"
-    chart: "charts/kubevirt"
+    chartName: "kubevirt"
     drop:
       - namespace
       - namespaces
     modifications:
+#      - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}"' # not (yet?) extracting to different name
       - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
-        reject: "ClusterRole|ClusterRoleBinding|PriorityClass"
+        reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
       - expression: '(.subjects[] | select(.name == "kubevirt-operator") .namespace) = "{{ .Release.Namespace }}"'
         kind: "RoleBinding|ClusterRoleBinding"
       - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration | toYaml | nindent 8 }}"'
         kind: KubeVirt
         valuesSelector: ".spec.configuration"
+      - expression: '.metadata.annotations."helm.sh/resource-policy" = "keep"'
+        kind: CustomResourceDefinition
   - owner: "kubevirt"
     repo: "containerized-data-importer"
     assets:
       - "cdi-operator.yaml"
       - "cdi-cr.yaml"
-    chart: "charts/cdi"
+    chartName: "cdi"
     drop:
       - namespace
       - namespaces
     modifications:
+#      - expression: '.metadata.name |= "{{ include \"cdi.fullname\" . }}"' # not (yet?) extracting to different name
       - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
-        reject: "ClusterRole|ClusterRoleBinding|PriorityClass"
+        reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
       - expression: '(.subjects[] | select(.name == "cdi-operator") .namespace) = "{{ .Release.Namespace }}"'
         kind: "RoleBinding|ClusterRoleBinding"
       - expression: '.spec.config |= "{{ .Values.cdi.config | toYaml | nindent 8 }}"'
@@ -42,3 +50,5 @@ githubReleases:
       - expression: '.spec.workload |= "{{ .Values.cdi.workload | toYaml | nindent 8 }}"'
         kind: CDI
         valuesSelector: ".spec.workload"
+      - expression: '.metadata.annotations."helm.sh/resource-policy" = "keep"'
+        kind: CustomResourceDefinition

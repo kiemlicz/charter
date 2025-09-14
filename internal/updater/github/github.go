@@ -21,7 +21,7 @@ func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, ex
 	common.Log.Infof("Latest release for %s: %s", releaseConfig.Repo, *releaseVersion)
 
 	if existingAppVersion == *releaseVersion {
-		common.Log.Infof("Helm chart %s is already up to date with version %s", releaseConfig.HelmChart, existingAppVersion)
+		common.Log.Infof("Helm chart %s is already up to date with version %s", releaseConfig.ChartName, existingAppVersion)
 		return nil, nil
 	}
 

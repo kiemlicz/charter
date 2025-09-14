@@ -3,6 +3,7 @@ package packager
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -19,10 +20,6 @@ import (
 type HelmChart struct {
 	path  string
 	chart *chart.Chart
-}
-
-func (hc *HelmChart) AppVersion() string {
-	return hc.chart.AppVersion()
 }
 
 func (hc *HelmChart) createTemplates(newManifests *[]map[string]any) error {
@@ -66,7 +63,7 @@ func (hc *HelmChart) createTemplates(newManifests *[]map[string]any) error {
 	return nil
 }
 
-func (hc *HelmChart) updateVersions(appVersion string, crds bool) error {
+func (hc *HelmChart) updateChartManifest(appVersion string, crds bool) error {
 	v, err := semver.NewVersion(appVersion)
 	if err != nil {
 		return fmt.Errorf("invalid appVersion (must also follow SemVer): %s, %w", appVersion, err)
@@ -75,6 +72,7 @@ func (hc *HelmChart) updateVersions(appVersion string, crds bool) error {
 		hc.chart.Metadata.AppVersion = appVersion
 	}
 	hc.chart.Metadata.Version = v.String()
+	hc.chart.Metadata.Description = fmt.Sprintf("A Helm Chart for %s", hc.chart.Metadata.Name)
 
 	return nil
 }
@@ -86,11 +84,18 @@ func (hc *HelmChart) save(vals *map[string]any) error {
 		return err
 	}
 
-	dir := strings.SplitN(hc.path, "/", 2)[0]
+	dir := filepath.Dir(hc.path)
 	common.Log.Infof("Saving Helm chart to: %s", dir)
 	err = chartutil.SaveDir(hc.chart, dir)
 	if err != nil {
 		common.Log.Errorf("Failed to save Helm chart to %s: %v", dir, err)
+		return err
+	}
+
+	//clear generated values
+	hc.chart.Values = map[string]any{}
+	err = os.Remove(fmt.Sprintf("%s/%s", hc.path, chartutil.ValuesfileName))
+	if err != nil {
 		return err
 	}
 
@@ -101,32 +106,36 @@ func (hc *HelmChart) save(vals *map[string]any) error {
 		return err
 	}
 	hc.chart.Values = mergedValues
+	valuesPath := fmt.Sprintf("%s/%s", hc.path, chartutil.ValuesfileName)
+	var valuesData []byte
+
 	if len(hc.chart.Values) > 0 {
-		valuesData, err := yaml.Marshal(hc.chart.Values)
+		valuesData, err = yaml.Marshal(hc.chart.Values)
 		if err != nil {
 			common.Log.Errorf("failed to marshal values: %v", err)
 			return err
 		}
-		valuesPath := fmt.Sprintf("%s/%s", hc.path, chartutil.ValuesfileName)
-		if err := os.WriteFile(valuesPath, valuesData, 0644); err != nil {
-			common.Log.Errorf("failed to write values.yaml: %v", err)
-			return err
-		}
+	}
+
+	if err := os.WriteFile(valuesPath, valuesData, 0644); err != nil {
+		common.Log.Errorf("failed to write values.yaml: %v", err)
+		return err
 	}
 
 	return nil
 }
 
-func (hc *HelmChart) Lint() error {
-	k8sVersionString := "1.30.0"
+func (hc *HelmChart) Lint(settings *common.HelmSettings) error {
+	k8sVersionString := settings.LintK8s
 	lintNamespace := "lint-namespace"
-	lintK8sVersion := chartutil.KubeVersion{
-		Version: k8sVersionString,
-		Major:   "1",
-		Minor:   "30",
+	lintK8sVersion, err := chartutil.ParseKubeVersion(k8sVersionString)
+	if err != nil {
+		common.Log.Warnf("Invalid Kubernetes version for linting: %s, defaulting to 1.30.0", k8sVersionString)
+		k8sVersionString = "1.30.0"
+		lintK8sVersion, _ = chartutil.ParseKubeVersion(k8sVersionString)
 	}
 	common.Log.Infof("Linting Helm chart in: %s against Kubernetes version: %s", hc.path, k8sVersionString)
-	linter := lint.AllWithKubeVersion(hc.path, hc.chart.Values, lintNamespace, &lintK8sVersion)
+	linter := lint.AllWithKubeVersion(hc.path, hc.chart.Values, lintNamespace, lintK8sVersion)
 
 	if len(linter.Messages) > 0 {
 		for _, lintMsg := range linter.Messages {
@@ -172,7 +181,10 @@ func (hc *HelmChart) clearTemplates() error {
 		return err
 	}
 	for _, file := range files {
-		err := os.Remove(fmt.Sprintf("%s/%s", templatesDir, file.Name()))
+		if strings.HasSuffix(file.Name(), ".tpl") {
+			continue
+		}
+		err := os.RemoveAll(fmt.Sprintf("%s/%s", templatesDir, file.Name()))
 		if err != nil {
 			return err
 		}
@@ -181,49 +193,53 @@ func (hc *HelmChart) clearTemplates() error {
 	return nil
 }
 
-func NewHelmChart(path string, m *common.Manifests, values *map[string]any, crds bool) (*HelmChart, error) {
-	common.Log.Infof("Loading Helm chart from: %s", path)
-	chartObj, err := loader.Load(path)
+func NewHelmChart(helmSettings *common.HelmSettings, chartName string, m *common.Manifests, values *map[string]any, isCrdsOnly bool) (*HelmChart, error) {
+	chartPath, err := chartutil.Create(chartName, helmSettings.Dir) //overwrites
 	if err != nil {
-		common.Log.Errorf("Failed to load Helm chart from %s: %v", path, err)
+		common.Log.Errorf("Failed to create Helm chart in %s: %v", helmSettings.Dir, err)
+		return nil, err
+	}
+	common.Log.Infof("Created Helm chart: %s", chartPath)
+	chartObj, err := loader.Load(chartPath)
+	if err != nil {
+		common.Log.Errorf("Failed to load Helm chart from %s: %v", chartPath, err)
 		return nil, err
 	}
 
-	c := &HelmChart{
-		path:  path,
+	createdChart := &HelmChart{
+		path:  chartPath,
 		chart: chartObj,
 	}
 
-	if crds {
-		err = c.createTemplates(&m.Crds)
+	if isCrdsOnly {
+		err = createdChart.createTemplates(&m.Crds)
 	} else {
-		err = c.createTemplates(&m.Manifests)
+		err = createdChart.createTemplates(&m.Manifests)
 	}
-	if err != nil {
-		return nil, err
-	}
-	err = c.updateVersions(m.Version, crds)
 	if err != nil {
 		return nil, err
 	}
 
-	err = c.save(values)
-	if err != nil {
-		return nil, err
-	}
-	err = c.Lint()
-	if err != nil {
-		return nil, err
-	}
-	err = c.Package()
+	err = createdChart.updateChartManifest(m.Version, isCrdsOnly)
 	if err != nil {
 		return nil, err
 	}
 
-	return c, nil
+	err = createdChart.save(values)
+	if err != nil {
+		return nil, err
+	}
+
+	err = createdChart.Lint(helmSettings)
+	if err != nil {
+		return nil, err
+	}
+
+	return createdChart, nil
 }
 
-func PeekAppVersion(path string) (string, error) {
+func PeekAppVersion(chartDir, chartName string) (string, error) {
+	path := fmt.Sprintf("%s/%s", chartDir, chartName)
 	chartObj, err := loader.Load(path)
 	if err != nil {
 		common.Log.Errorf("Failed to load Helm chart from %s: %v", path, err)

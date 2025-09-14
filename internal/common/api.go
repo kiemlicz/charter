@@ -19,14 +19,21 @@ type Config struct {
 		Level string `mapstructure:"level"`
 	} `mapstructure:"log"`
 
+	Helm HelmSettings `mapstructure:"helm"`
+
 	Releases []GithubRelease `mapstructure:"githubReleases"`
+}
+
+type HelmSettings struct {
+	Dir     string `mapstructure:"dir"`
+	LintK8s string `mapstructure:"lintK8s"`
 }
 
 type GithubRelease struct {
 	Owner         string         `mapstructure:"owner"`
 	Repo          string         `mapstructure:"repo"`
 	Assets        []string       `mapstructure:"assets"`
-	HelmChart     string         `mapstructure:"chart"`
+	ChartName     string         `mapstructure:"chartName"`
 	Drop          []string       `mapstructure:"drop"`
 	Modifications []Modification `mapstructure:"modifications"`
 	Replacements  string         `mapstructure:"replacements"` // must be kept as a string for yaml unmarshalling into kustomize replacements...
