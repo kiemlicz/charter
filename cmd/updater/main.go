@@ -39,17 +39,17 @@ func main() {
 		go func() {
 			defer wg.Done()
 			if config.ModeOfOperation == common.ModeUpdate {
-				ver, err := UpdateChart(ctx, &release, &config.Helm)
+				chart, err := UpdateChart(ctx, &release, &config.Helm)
 				if err != nil {
 					common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
+					return
+				} else if chart == nil {
 					return
 				} else {
 					common.Log.Infof("Successfully generated Chart for release: %s", release.Repo)
 				}
-
-				// todo short circuit if no changes - currently it creates branch
 				// todo commit there in parallel
-				err = CreateBranch(fmt.Sprintf("update/%s-%s", release.ChartName, ver))
+				err = CreateBranch(fmt.Sprintf("update/%s-%s", release.ChartName, chart.AppVersion()))
 				if err != nil {
 					return
 				}
@@ -88,21 +88,21 @@ func CreateBranch(branchName string) error {
 	return nil
 }
 
-func UpdateChart(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (string, error) {
+func UpdateChart(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*packager.HelmChart, error) {
 	common.Log.Infof("Updating release: %s", releaseConfig.Repo)
 
 	currentAppVersion, err := packager.PeekAppVersion(helmSettings.SrcDir, releaseConfig.ChartName)
 	if err != nil {
 		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.ChartName, err)
-		return "", err
+		return nil, err
 	}
 	manifests, err := ghup.FetchManifests(ctx, releaseConfig, currentAppVersion)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if manifests == nil {
 		common.Log.Infof("No updates for release %s, skipping", releaseConfig.Repo)
-		return currentAppVersion, nil
+		return nil, nil
 	}
 
 	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.ChartName, len(manifests.Manifests))
@@ -115,11 +115,11 @@ func UpdateChart(ctx context.Context, releaseConfig *common.GithubRelease, helmS
 		&releaseConfig.Modifications,
 	)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	_, err = packager.NewHelmChart(helmSettings, releaseConfig.ChartName, modifiedManifests, extractedValues, false)
+	chart, err := packager.NewHelmChart(helmSettings, releaseConfig.ChartName, modifiedManifests, extractedValues, false)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	if modifiedManifests.ContainsCrds() {
@@ -127,11 +127,11 @@ func UpdateChart(ctx context.Context, releaseConfig *common.GithubRelease, helmS
 		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(modifiedManifests.Crds), crdsChartName)
 		_, err := packager.NewHelmChart(helmSettings, crdsChartName, modifiedManifests, new(map[string]any), true)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
-	return manifests.Version, nil // fixme return charts
+	return chart, nil
 }
 
 // CreatePr creates a PR with the updated charts

@@ -22,6 +22,10 @@ type HelmChart struct {
 	chart *chart.Chart
 }
 
+func (hc *HelmChart) AppVersion() string {
+	return hc.chart.AppVersion()
+}
+
 func (hc *HelmChart) createTemplates(newManifests *[]map[string]any) error {
 	common.Log.Debugf("Updating: %d Helm Chart manifests in: %s", len(*newManifests), hc.path)
 	templates := make(map[string]*chart.File, len(*newManifests))
