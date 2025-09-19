@@ -99,7 +99,7 @@ func TestParametrizeExtractsValues(t *testing.T) {
 			//given
 
 			//when
-			modifiedManifests, extractedValues, err := ChartModifier.ParametrizeManifests(testManifests, &tc.modifications)
+			modifiedManifests, err := ChartModifier.ParametrizeManifests(testManifests, &tc.modifications)
 
 			//then
 			if err != nil {
@@ -113,10 +113,10 @@ func TestParametrizeExtractsValues(t *testing.T) {
 					return
 				}
 			}
-			common.Log.Infof("Extracted Values:\n%v\n", mustYaml(extractedValues))
+			common.Log.Infof("Extracted Values:\n%v\n", mustYaml(modifiedManifests.Values))
 
-			if !mapContains(extractedValues, &tc.expectedValues, true) {
-				t.Errorf("TestParametrizeExtractsValues() extractedValues:\n%v, but wanted:\n%v", *extractedValues, tc.expectedValues)
+			if !mapContains(&modifiedManifests.Values, &tc.expectedValues, true) {
+				t.Errorf("TestParametrizeExtractsValues() extractedValues:\n%v, but wanted:\n%v", modifiedManifests.Values, tc.expectedValues)
 				return
 			}
 		})
@@ -135,7 +135,7 @@ func TestParametrizeListElement(t *testing.T) {
 	}
 
 	//when
-	modifiedManifests, _, err := ChartModifier.ParametrizeManifests(testManifests, &mods)
+	modifiedManifests, err := ChartModifier.ParametrizeManifests(testManifests, &mods)
 
 	//then
 	if err != nil {

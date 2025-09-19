@@ -25,9 +25,15 @@ type Config struct {
 
 	ModeOfOperation ModeOfOperation `mapstructure:"mode"`
 
+	PullRequest PullRequest `mapstructure:"pr"`
+
 	Helm HelmSettings `mapstructure:"helm"`
 
 	Releases []GithubRelease `mapstructure:"githubReleases"`
+}
+
+type PullRequest struct {
+	DefaultBranch string `mapstructure:"defaultBranch"`
 }
 
 type HelmSettings struct {
@@ -57,6 +63,7 @@ type Manifests struct {
 	Crds      []map[string]any
 	Manifests []map[string]any
 	Version   string
+	Values    map[string]any
 }
 
 func (m Manifests) ContainsCrds() bool {
@@ -87,6 +94,7 @@ func NewManifests(assetsData *map[string][]byte, version string) (*Manifests, er
 		Crds:      crds,
 		Manifests: manifests,
 		Version:   version,
+		Values:    make(map[string]any),
 	}, nil
 }
 

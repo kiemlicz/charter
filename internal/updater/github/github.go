@@ -10,6 +10,13 @@ import (
 	"github.com/kiemlicz/charter/internal/common"
 )
 
+// CreatePr creates a PR with the updated charts
+// commits and pushes changes
+// creates PR against main branch
+func CreatePr(ctx context.Context, helmSettings *common.HelmSettings, prSettings *common.PullRequest, srcBranch string) {
+
+}
+
 func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, existingAppVersion string) (*common.Manifests, error) {
 	client := github.NewClient(nil)
 	releaseData, err := downloadReleaseMeta(ctx, client, releaseConfig)

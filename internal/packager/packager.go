@@ -52,20 +52,21 @@ func (m *Modifier) FilterManifests(manifests *common.Manifests, denyKindFilter [
 		Crds:      manifests.Crds,
 		Manifests: filteredManifests,
 		Version:   manifests.Version,
+		Values:    manifests.Values,
 	}
 }
 
 // ParametrizeManifests applies modifications to manifests
 // returns modified manifests and extracted values
-func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]common.Modification) (*common.Manifests, *map[string]any, error) {
+func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]common.Modification) (*common.Manifests, error) {
 	modifiedManifests := make([]map[string]any, 0)
 	modifiedCrds := make([]map[string]any, 0)
-	extractedValues := make(map[string]any)
+	extractedValues := manifests.Values
 
 	for _, manifest := range manifests.Manifests {
 		m, v, err := m.applyModifications(&manifest, mods)
 		if err != nil {
-			return nil, nil, err //not continuing on error
+			return nil, err //not continuing on error
 		}
 		modifiedManifests = append(modifiedManifests, *m)
 		extractedValues = *common.DeepMerge(&extractedValues, v)
@@ -74,7 +75,7 @@ func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]com
 	for _, crd := range manifests.Crds {
 		m, _, err := m.applyModifications(&crd, mods)
 		if err != nil {
-			return nil, nil, err //not continuing on error
+			return nil, err //not continuing on error
 		}
 		modifiedCrds = append(modifiedCrds, *m)
 	}
@@ -83,7 +84,8 @@ func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]com
 		Crds:      modifiedCrds,
 		Manifests: modifiedManifests,
 		Version:   manifests.Version,
-	}, &extractedValues, nil
+		Values:    extractedValues,
+	}, nil
 }
 
 func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.Modification) (*map[string]any, *map[string]any, error) {

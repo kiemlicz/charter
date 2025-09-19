@@ -4,13 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
+	"os"
 	"time"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-
 	"github.com/kiemlicz/charter/internal/common"
+	"github.com/kiemlicz/charter/internal/git"
 	"github.com/kiemlicz/charter/internal/packager"
 	ghup "github.com/kiemlicz/charter/internal/updater/github"
 )
@@ -29,66 +27,93 @@ func main() {
 		return
 	}
 
-	var wg sync.WaitGroup
+	if config.ModeOfOperation == common.ModeUpdate {
+		err = UpdateMode(config)
+	} else {
+		err = PublishMode(config)
+	}
+	if err != nil {
+		common.Log.Fatalf("Operation %s failed: %v", config.ModeOfOperation, err)
+		os.Exit(1)
+	}
+}
+
+func UpdateMode(config *common.Config) error {
 	mainCtx := context.Background()
+	createdCharts := make(chan *packager.HelmizedManifests)
+	errChannel := make(chan error, 1)
+	defer close(createdCharts)
+	defer close(errChannel)
+
+	go func() {
+		gitRepo, err := git.NewClient(".")
+		if err != nil {
+			return
+		}
+
+		for charts := range createdCharts {
+			// naming by main chartl
+			branch := fmt.Sprintf("update/%s-%s", charts.Chart.Metadata.Name, charts.AppVersion())
+
+			err = gitRepo.CreateBranch(config.PullRequest.DefaultBranch, branch)
+			if err != nil {
+				errChannel <- err
+				return
+			}
+			err = gitRepo.Commit(charts)
+			if err != nil {
+				errChannel <- err
+				return
+			}
+			err = gitRepo.Push(branch)
+			if err != nil {
+				errChannel <- err
+				return
+			}
+
+			errChannel <- nil
+		}
+	}()
 
 	for _, release := range config.Releases {
 		ctx, cancel := context.WithTimeout(mainCtx, 30*time.Second)
 		defer cancel()
-		wg.Add(1)
 		go func() {
-			defer wg.Done()
-			if config.ModeOfOperation == common.ModeUpdate {
-				chart, err := UpdateChart(ctx, &release, &config.Helm)
-				if err != nil {
-					common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
-					return
-				} else if chart == nil {
-					return
-				} else {
-					common.Log.Infof("Successfully generated Chart for release: %s", release.Repo)
-				}
-				// todo commit there in parallel
-				err = CreateBranch(fmt.Sprintf("update/%s-%s", release.ChartName, chart.AppVersion()))
-				if err != nil {
-					return
-				}
-				CreatePr(ctx, &release, &config.Helm)
-			} else if config.ModeOfOperation == common.ModePublish {
-				PublishCharts(ctx, &release, &config.Helm)
+			modifiedManifests, err := ProcessManifests(ctx, &release, &config.Helm)
+			if err != nil {
+				common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
+				return
+			} else if modifiedManifests == nil {
+				return
+			} else {
+				common.Log.Infof("Successfully generated Chart for release: %s", release.Repo)
 			}
+
+			charts, err := packager.NewHelmCharts(&config.Helm, release.ChartName, modifiedManifests)
+			if err != nil {
+				return
+			}
+			createdCharts <- charts
 		}()
 	}
 
-	wg.Wait()
-}
-
-func CreateBranch(branchName string) error {
-	repo, err := git.PlainOpen(".")
+	//fixme add timeout
+	err := <-errChannel
 	if err != nil {
-		common.Log.Errorf("Failed to open git repo: %v", err)
+		common.Log.Errorf("Error during update: %v", err)
 		return err
 	}
-
-	headRef, err := repo.Head()
-	if err != nil {
-		common.Log.Errorf("Failed to get HEAD: %v", err)
-		return err
-	}
-
-	refName := plumbing.NewBranchReferenceName(branchName)
-	err = repo.Storer.SetReference(plumbing.NewHashReference(refName, headRef.Hash()))
-	if err != nil {
-		common.Log.Errorf("Failed to create branch: %v", err)
-		return err
-	}
-
-	common.Log.Infof("Created branch: %s (no checkout)", branchName)
-
 	return nil
 }
 
-func UpdateChart(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*packager.HelmChart, error) {
+// PublishMode publishes the charts to the chart repository
+// iterates over all charts/ and releases them
+func PublishMode(config *common.Config) error {
+	common.Log.Infof("Publishing Charts")
+	return nil
+}
+
+func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*common.Manifests, error) {
 	common.Log.Infof("Updating release: %s", releaseConfig.Repo)
 
 	currentAppVersion, err := packager.PeekAppVersion(helmSettings.SrcDir, releaseConfig.ChartName)
@@ -107,7 +132,7 @@ func UpdateChart(ctx context.Context, releaseConfig *common.GithubRelease, helmS
 
 	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.ChartName, len(manifests.Manifests))
 
-	modifiedManifests, extractedValues, err := packager.ChartModifier.ParametrizeManifests(
+	modifiedManifests, err := packager.ChartModifier.ParametrizeManifests(
 		packager.ChartModifier.FilterManifests(
 			manifests,
 			releaseConfig.Drop,
@@ -117,32 +142,6 @@ func UpdateChart(ctx context.Context, releaseConfig *common.GithubRelease, helmS
 	if err != nil {
 		return nil, err
 	}
-	chart, err := packager.NewHelmChart(helmSettings, releaseConfig.ChartName, modifiedManifests, extractedValues, false)
-	if err != nil {
-		return nil, err
-	}
 
-	if modifiedManifests.ContainsCrds() {
-		crdsChartName := fmt.Sprintf("%s-crds", releaseConfig.ChartName)
-		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(modifiedManifests.Crds), crdsChartName)
-		_, err := packager.NewHelmChart(helmSettings, crdsChartName, modifiedManifests, new(map[string]any), true)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return chart, nil
-}
-
-// CreatePr creates a PR with the updated charts
-// creates branch for release
-// commits and pushes changes
-// creates PR against main branch
-func CreatePr(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) {
-
-}
-
-func PublishCharts(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) {
-	common.Log.Infof("Publishing Chart for release: %s", releaseConfig.Repo)
-
+	return modifiedManifests, nil
 }

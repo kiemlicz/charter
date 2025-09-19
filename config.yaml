@@ -9,6 +9,9 @@ helm:
   targetDir: "target"
   lintK8s: "1.30.0"
 
+pr:
+  defaultBranch: "master"
+
 githubReleases:
   - owner: "kubevirt"
     repo: "kubevirt"
