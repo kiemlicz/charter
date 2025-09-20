@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/kiemlicz/charter/internal/common"
@@ -40,48 +41,21 @@ func main() {
 
 func UpdateMode(config *common.Config) error {
 	mainCtx := context.Background()
-	createdCharts := make(chan *packager.HelmizedManifests)
-	errChannel := make(chan error, len(config.Releases))
+	var wg sync.WaitGroup
+	createdCharts := make(chan *packager.HelmizedManifests, len(config.Releases))
 	defer close(createdCharts)
-	defer close(errChannel)
 
-	go func() {
-		gitRepo, err := git.NewClient(".")
-		if err != nil {
-			return
-		}
-
-		for charts := range createdCharts {
-			if charts == nil {
-				continue
-			}
-			// naming by main chartl
-			branch := fmt.Sprintf("update/%s-%s", charts.Chart.Metadata.Name, charts.AppVersion())
-
-			err = gitRepo.CreateBranch(config.PullRequest.DefaultBranch, branch)
-			if err != nil {
-				errChannel <- err
-				return
-			}
-			err = gitRepo.Commit(charts)
-			if err != nil {
-				errChannel <- err
-				return
-			}
-			err = gitRepo.Push(branch)
-			if err != nil {
-				errChannel <- err
-				return
-			}
-
-			errChannel <- nil
-		}
-	}()
+	gitRepo, err := git.NewClient(".")
+	if err != nil {
+		return err
+	}
 
 	for _, release := range config.Releases {
 		ctx, cancel := context.WithTimeout(mainCtx, 30*time.Second)
 		defer cancel()
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			modifiedManifests, err := ProcessManifests(ctx, &release, &config.Helm)
 			if err != nil {
 				common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
@@ -102,18 +76,26 @@ func UpdateMode(config *common.Config) error {
 		}()
 	}
 
-	results := 0
-	for results < len(config.Releases) {
-		select {
-		case err := <-errChannel:
-			if err != nil {
-				common.Log.Errorf("Error during update: %v", err)
-				return err
-			}
-			results++
-		case <-time.After(30 * time.Second):
-			common.Log.Errorf("Timeout waiting for chart updates")
-			return fmt.Errorf("timeout waiting for chart updates")
+	wg.Wait()
+	//commit starts once we receive all charts and workdir is not externally modified
+	for charts := range createdCharts {
+		if charts == nil {
+			continue
+		}
+		// naming by main chart
+		branch := fmt.Sprintf("update/%s-%s", charts.Chart.Metadata.Name, charts.AppVersion())
+
+		err = gitRepo.CreateBranch(config.PullRequest.DefaultBranch, branch)
+		if err != nil {
+			return err
+		}
+		err = gitRepo.Commit(charts)
+		if err != nil {
+			return err
+		}
+		err = gitRepo.Push(branch)
+		if err != nil {
+			return err
 		}
 	}
 

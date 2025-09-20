@@ -2,6 +2,7 @@ package git
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	gogit "github.com/go-git/go-git/v5"
@@ -69,6 +70,8 @@ func (g *Client) CreateBranch(defaultBranch, branchName string) error {
 	}
 
 	common.Log.Infof("Switched branch from source: %s to: %s", defaultBranch, branchName)
+	g.status(wt)
+
 	return nil
 }
 
@@ -79,14 +82,41 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
 
-	// Remove all files from index
-	err = wt.RemoveGlob(".")
+	status, err := wt.Status()
 	if err != nil {
-		return fmt.Errorf("failed to remove files from index: %w", err)
+		return fmt.Errorf("failed to get status: %w", err)
+	}
+
+	chartPath := fmt.Sprintf("%s/%s", charts.Path, charts.Chart.Metadata.Name)
+	crdsChartPath := fmt.Sprintf("%s/%s", charts.Path, charts.CrdChart.Metadata.Name)
+
+	for filePath, _ := range status {
+		if strings.HasPrefix(filePath, chartPath) || strings.HasPrefix(filePath, crdsChartPath) {
+			_, err = wt.Add(filePath)
+			if err != nil {
+				return fmt.Errorf("failed to add file %s: %w", filePath, err)
+			}
+		} else {
+			idx, err := g.Repository.Storer.Index()
+			if err != nil {
+				return fmt.Errorf("failed to get index: %w", err)
+			}
+
+			for i, e := range idx.Entries {
+				if e.Name == filePath {
+					idx.Entries = append(idx.Entries[:i], idx.Entries[i+1:]...)
+					break
+				}
+			}
+
+			_, err = wt.Remove(filePath) // doesn't belong to this chart, not tracking them as will be added in next iter
+			if err != nil {
+				return fmt.Errorf("failed to remove file %s: %w", filePath, err)
+			}
+		}
 	}
 
 	// Add all chart files
-	chartPath := fmt.Sprintf("%s/%s", charts.Path, charts.Chart.Metadata.Name)
 	_, err = wt.Add(chartPath)
 	if err != nil {
 		return fmt.Errorf("failed to add chart %s: %w", chartPath, err)
@@ -96,12 +126,11 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 
 	// Add all CRD chart files
 	if charts.CrdChart != nil {
-		crdPath := fmt.Sprintf("%s/%s", charts.Path, charts.CrdChart.Metadata.Name)
-		_, err = wt.Add(crdPath)
+		_, err = wt.Add(crdsChartPath)
 		if err != nil {
-			return fmt.Errorf("failed to add CRD chart %s: %w", crdPath, err)
+			return fmt.Errorf("failed to add CRD chart %s: %w", crdsChartPath, err)
 		}
-		common.Log.Infof("Added crd-chart files from path: %s (current branch: %s)", crdPath, headRef.Name().Short())
+		common.Log.Infof("Added crd-chart files from path: %s (current branch: %s)", crdsChartPath, headRef.Name().Short())
 	}
 
 	_, err = wt.Commit(
@@ -117,11 +146,7 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 		return fmt.Errorf("failed to commit: %w", err)
 	}
 
-	// Restore worktree to last commit state
-	err = wt.Reset(&gogit.ResetOptions{Mode: gogit.HardReset})
-	if err != nil {
-		return fmt.Errorf("failed to restore worktree: %w", err)
-	}
+	g.status(wt)
 
 	return nil
 }
@@ -142,4 +167,14 @@ func (g *Client) Push(branch string) error {
 	//}
 	common.Log.Infof("Pushed branch: %s", branch)
 	return nil
+}
+
+func (g *Client) status(wt *gogit.Worktree) {
+	status, err := wt.Status()
+	if err != nil {
+		common.Log.Debugf("failed to get status: %w", err)
+		return
+	}
+	headRef, _ := g.Repository.Head()
+	common.Log.Debugf("Branch: %s status:\n%s", headRef.Name().Short(), status)
 }
