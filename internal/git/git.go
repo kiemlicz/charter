@@ -50,6 +50,7 @@ func (g *Client) CreateBranch(defaultBranch, branchName string) error {
 	common.Log.Infof("Switching branch to: %v", refName)
 	err = wt.Checkout(&gogit.CheckoutOptions{
 		Branch: refName,
+		Keep:   true, // allows to checkout even if there are unstaged changes
 		Create: false,
 		Force:  false,
 	})
@@ -60,14 +61,14 @@ func (g *Client) CreateBranch(defaultBranch, branchName string) error {
 			for file := range status {
 				files = append(files, file)
 			}
-			common.Log.Errorf("Failed to checkout branch: worktree contains unstaged changes in files: %v", files)
+			common.Log.Errorf("Failed to checkout branch: %s, worktree contains unstaged changes in files: %v", refName, files)
 		} else {
 			common.Log.Errorf("Failed to checkout branch: %v", err)
 		}
 		return err
 	}
 
-	common.Log.Infof("Created and checked out branch: %s", branchName)
+	common.Log.Infof("Switched branch from source: %s to: %s", defaultBranch, branchName)
 	return nil
 }
 
@@ -78,12 +79,20 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
 
+	// Remove all files from index
+	err = wt.RemoveGlob(".")
+	if err != nil {
+		return fmt.Errorf("failed to remove files from index: %w", err)
+	}
+
 	// Add all chart files
 	chartPath := fmt.Sprintf("%s/%s", charts.Path, charts.Chart.Metadata.Name)
 	_, err = wt.Add(chartPath)
 	if err != nil {
 		return fmt.Errorf("failed to add chart %s: %w", chartPath, err)
 	}
+	headRef, _ := g.Repository.Head()
+	common.Log.Infof("Added chart files from path: %s (current branch: %s)", chartPath, headRef.Name().Short())
 
 	// Add all CRD chart files
 	if charts.CrdChart != nil {
@@ -92,6 +101,7 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 		if err != nil {
 			return fmt.Errorf("failed to add CRD chart %s: %w", crdPath, err)
 		}
+		common.Log.Infof("Added crd-chart files from path: %s (current branch: %s)", crdPath, headRef.Name().Short())
 	}
 
 	_, err = wt.Commit(
@@ -105,6 +115,12 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 		})
 	if err != nil {
 		return fmt.Errorf("failed to commit: %w", err)
+	}
+
+	// Restore worktree to last commit state
+	err = wt.Reset(&gogit.ResetOptions{Mode: gogit.HardReset})
+	if err != nil {
+		return fmt.Errorf("failed to restore worktree: %w", err)
 	}
 
 	return nil

@@ -41,7 +41,7 @@ func main() {
 func UpdateMode(config *common.Config) error {
 	mainCtx := context.Background()
 	createdCharts := make(chan *packager.HelmizedManifests)
-	errChannel := make(chan error, 1)
+	errChannel := make(chan error, len(config.Releases))
 	defer close(createdCharts)
 	defer close(errChannel)
 
@@ -52,6 +52,9 @@ func UpdateMode(config *common.Config) error {
 		}
 
 		for charts := range createdCharts {
+			if charts == nil {
+				continue
+			}
 			// naming by main chartl
 			branch := fmt.Sprintf("update/%s-%s", charts.Chart.Metadata.Name, charts.AppVersion())
 
@@ -82,27 +85,38 @@ func UpdateMode(config *common.Config) error {
 			modifiedManifests, err := ProcessManifests(ctx, &release, &config.Helm)
 			if err != nil {
 				common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
+				createdCharts <- nil
 				return
 			} else if modifiedManifests == nil {
+				createdCharts <- nil
 				return
-			} else {
-				common.Log.Infof("Successfully generated Chart for release: %s", release.Repo)
 			}
 
 			charts, err := packager.NewHelmCharts(&config.Helm, release.ChartName, modifiedManifests)
 			if err != nil {
+				createdCharts <- nil
 				return
 			}
+			common.Log.Infof("Successfully created Helm chart for release: %s", release.Repo)
 			createdCharts <- charts
 		}()
 	}
 
-	//fixme add timeout
-	err := <-errChannel
-	if err != nil {
-		common.Log.Errorf("Error during update: %v", err)
-		return err
+	results := 0
+	for results < len(config.Releases) {
+		select {
+		case err := <-errChannel:
+			if err != nil {
+				common.Log.Errorf("Error during update: %v", err)
+				return err
+			}
+			results++
+		case <-time.After(30 * time.Second):
+			common.Log.Errorf("Timeout waiting for chart updates")
+			return fmt.Errorf("timeout waiting for chart updates")
+		}
 	}
+
 	return nil
 }
 
