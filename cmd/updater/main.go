@@ -43,7 +43,6 @@ func UpdateMode(config *common.Config) error {
 	mainCtx := context.Background()
 	var wg sync.WaitGroup
 	createdCharts := make(chan *packager.HelmizedManifests, len(config.Releases))
-	defer close(createdCharts)
 
 	gitRepo, err := git.NewClient(".")
 	if err != nil {
@@ -77,6 +76,8 @@ func UpdateMode(config *common.Config) error {
 	}
 
 	wg.Wait()
+	close(createdCharts)
+
 	//commit starts once we receive all charts and workdir is not externally modified
 	for charts := range createdCharts {
 		if charts == nil {
