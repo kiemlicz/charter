@@ -90,30 +90,28 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 	chartPath := fmt.Sprintf("%s/%s", charts.Path, charts.Chart.Metadata.Name)
 	crdsChartPath := fmt.Sprintf("%s/%s", charts.Path, charts.CrdChart.Metadata.Name)
 
-	for filePath, _ := range status {
+	var unstageFiles []string
+	for filePath, status := range status {
 		if strings.HasPrefix(filePath, chartPath) || strings.HasPrefix(filePath, crdsChartPath) {
 			_, err = wt.Add(filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add file %s: %w", filePath, err)
 			}
-		} else {
-			idx, err := g.Repository.Storer.Index()
-			if err != nil {
-				return fmt.Errorf("failed to get index: %w", err)
-			}
-
-			for i, e := range idx.Entries {
-				if e.Name == filePath {
-					idx.Entries = append(idx.Entries[:i], idx.Entries[i+1:]...)
-					break
-				}
-			}
-			//
-			//_, err = wt.Remove(filePath) // doesn't belong to this chart, not tracking them as will be added in next iter
-			//if err != nil {
-			//	return fmt.Errorf("failed to remove file %s: %w", filePath, err)
-			//}
+		} else if status.Staging == gogit.Modified || status.Staging == gogit.Deleted || status.Worktree == gogit.Added {
+			unstageFiles = append(unstageFiles, filePath)
 		}
+	}
+
+	if len(unstageFiles) > 0 {
+		common.Log.Debugf("Files to unstage: %v", unstageFiles)
+		restoreOpts := &gogit.RestoreOptions{
+			Files:  unstageFiles,
+			Staged: true, // always unstage
+		}
+		if err := wt.Restore(restoreOpts); err != nil {
+			return fmt.Errorf("failed to restore: %w", err)
+		}
+		common.Log.Debugf("Restored non-chart files")
 	}
 
 	// Add all chart files
