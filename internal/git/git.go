@@ -108,11 +108,11 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 					break
 				}
 			}
-
-			_, err = wt.Remove(filePath) // doesn't belong to this chart, not tracking them as will be added in next iter
-			if err != nil {
-				return fmt.Errorf("failed to remove file %s: %w", filePath, err)
-			}
+			//
+			//_, err = wt.Remove(filePath) // doesn't belong to this chart, not tracking them as will be added in next iter
+			//if err != nil {
+			//	return fmt.Errorf("failed to remove file %s: %w", filePath, err)
+			//}
 		}
 	}
 
