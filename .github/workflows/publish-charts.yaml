@@ -6,8 +6,8 @@ on:
       - master
     tags:
       - "v[0-9]+.*"
-    paths:
-      - charts/**
+#    paths:
+#      - charts/**
 
 env:
   REGISTRY: ghcr.io
