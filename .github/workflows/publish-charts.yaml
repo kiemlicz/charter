@@ -19,7 +19,8 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
+      repository-projects: write
+      contents: write
       packages: write
 
     steps:
