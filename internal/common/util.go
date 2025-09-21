@@ -68,7 +68,6 @@ func SetupConfig() (*Config, error) {
 	if v.GetString("pr.authToken") == "" {
 		if envTok := os.Getenv("GITHUB_TOKEN"); envTok != "" {
 			v.Set("pr.authToken", envTok)
-			Log.Infof("Using GITHUB_TOKEN from environment for pr.authToken")
 		}
 	}
 
