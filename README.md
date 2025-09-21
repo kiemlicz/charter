@@ -38,3 +38,6 @@ Currently, handles:
 ```bash
 TODO 
 ```
+
+3. [Link action with package](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility#ensuring-workflow-access-to-your-package). Without this the workflow will receive 403
+4. Link repo source with package
