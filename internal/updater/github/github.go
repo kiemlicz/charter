@@ -10,11 +10,40 @@ import (
 	"github.com/kiemlicz/charter/internal/common"
 )
 
-// CreatePr creates a PR with the updated charts
-// commits and pushes changes
-// creates PR against main branch
-func CreatePr(ctx context.Context, helmSettings *common.HelmSettings, prSettings *common.PullRequest, srcBranch string) {
+// CreatePr creates a Pull Request into default branch
+func CreatePr(ctx context.Context, prSettings *common.PullRequest, srcBranch string) error {
+	defaultBranch := prSettings.DefaultBranch
 
+	if defaultBranch == "" {
+		return fmt.Errorf("default branch empty")
+	}
+	if srcBranch == "" {
+		return fmt.Errorf("source branch empty")
+	}
+	if srcBranch == defaultBranch {
+		return fmt.Errorf("source branch equals default branch")
+	}
+
+	client := github.NewClient(nil).WithAuthToken(prSettings.AuthToken)
+
+	newPR := &github.NewPullRequest{
+		Title: github.Ptr(fmt.Sprintf(prSettings.Title, srcBranch)),
+		Head:  github.Ptr(srcBranch),
+		Base:  github.Ptr(defaultBranch),
+		Body:  github.Ptr(prSettings.Body),
+	}
+
+	pr, resp, err := client.PullRequests.Create(ctx, prSettings.Owner, prSettings.Repo, newPR)
+	if err != nil {
+		// 422 often means PR already exists or branch not found
+		if resp != nil {
+			return fmt.Errorf("failed to create PR: status=%d err=%w", resp.StatusCode, err)
+		}
+		return fmt.Errorf("failed to create PR: %w", err)
+	}
+
+	common.Log.Infof("Created PR #%d: %s", pr.GetNumber(), pr.GetHTMLURL())
+	return nil
 }
 
 func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, existingAppVersion string) (*common.Manifests, error) {

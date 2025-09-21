@@ -10,7 +10,12 @@ helm:
   lintK8s: "1.30.0"
 
 pr:
+  repo: "charter"
+  owner: "kiemlicz"
+  authToken: "" # GH_TOKEN can be used instead
   defaultBranch: "master"
+  title: "Automated Chart generation: %s"
+  body: "This is an automated PR updating the Helm charts from configured remotes."
 
 githubReleases:
   - owner: "kubevirt"

@@ -45,6 +45,7 @@ func SetupConfig() (*Config, error) {
 
 	pflag.String("mode", "", "update|publish mode (overrides yaml file)")
 	pflag.String("log.level", "", "log level (overrides yaml file)")
+	pflag.String("pr.authToken", "", "user token for auth")
 	pflag.Parse()
 	_ = v.BindPFlags(pflag.CommandLine)
 
@@ -62,6 +63,14 @@ func SetupConfig() (*Config, error) {
 	}
 
 	loader(".local/config.yaml")
+
+	// Fallback: if pr.authToken still empty, use GH_TOKEN env
+	if v.GetString("pr.authToken") == "" {
+		if envTok := os.Getenv("GH_TOKEN"); envTok != "" {
+			v.Set("pr.authToken", envTok)
+			Log.Infof("Using GH_TOKEN from environment for pr.authToken")
+		}
+	}
 
 	var config *Config
 	err := v.Unmarshal(&config)

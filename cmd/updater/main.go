@@ -34,7 +34,7 @@ func main() {
 		err = PublishMode(config)
 	}
 	if err != nil {
-		common.Log.Fatalf("Operation %s failed: %v", config.ModeOfOperation, err)
+		common.Log.Fatalf("Mode %s failed: %v", config.ModeOfOperation, err)
 		os.Exit(1)
 	}
 }
@@ -97,6 +97,11 @@ func UpdateMode(config *common.Config) error {
 			return err
 		}
 		err = gitRepo.Push(timeoutCtx, branch)
+		if err != nil {
+			return err
+		}
+
+		err = ghup.CreatePr(timeoutCtx, &config.PullRequest, branch)
 		if err != nil {
 			return err
 		}

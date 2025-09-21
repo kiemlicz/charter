@@ -34,6 +34,11 @@ type Config struct {
 
 type PullRequest struct {
 	DefaultBranch string `mapstructure:"defaultBranch"`
+	Title         string `mapstructure:"title"`
+	Body          string `mapstructure:"body"`
+	Repo          string `mapstructure:"repo"`
+	Owner         string `mapstructure:"owner"`
+	AuthToken     string `mapstructure:"authToken"`
 }
 
 type HelmSettings struct {
