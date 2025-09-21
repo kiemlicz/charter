@@ -1,0 +1,23 @@
+name: Check and update Charts
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  update:
+    name: Update Helm Charts
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
+      - name: Run # replace with pre-built binary
+        run: "go run cmd/updater/main.go --mode=update"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

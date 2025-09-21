@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -114,6 +115,25 @@ func UpdateMode(config *common.Config) error {
 // iterates over all charts/* and releases them
 func PublishMode(config *common.Config) error {
 	common.Log.Infof("Publishing Charts")
+	files, err := os.ReadDir(config.Helm.SrcDir)
+	if err != nil {
+		return fmt.Errorf("failed to read charts directory: %w", err)
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			chartPath := filepath.Join(config.Helm.SrcDir, file.Name())
+			common.Log.Infof("Found chart directory: %s", chartPath)
+			packagedPath, err := packager.Package(chartPath, &config.Helm)
+			if err != nil {
+				return err
+			}
+			ref, err := packager.Push(packagedPath, config.Helm.Remote)
+			if err != nil {
+				return err
+			}
+			common.Log.Infof("Chart %s published to %s", file.Name(), ref)
+		}
+	}
 	return nil
 }
 

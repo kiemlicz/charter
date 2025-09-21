@@ -15,6 +15,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint"
+	"helm.sh/helm/v3/pkg/registry"
 )
 
 // HelmizedManifests holds the Helm chart and its path created from Kubernetes manifests.
@@ -156,7 +157,7 @@ func Lint(chartFullPath string, ch *chart.Chart, settings *common.HelmSettings) 
 	return nil
 }
 
-func (packaged *HelmizedManifests) Package(settings *common.HelmSettings) (string, error) {
+func Package(chartPath string, settings *common.HelmSettings) (string, error) {
 	if err := os.MkdirAll(settings.TargetDir, 0755); err != nil {
 		common.Log.Errorf("failed to create target directory: %v", err)
 		return "", err
@@ -165,20 +166,72 @@ func (packaged *HelmizedManifests) Package(settings *common.HelmSettings) (strin
 	client := action.NewPackage()
 	client.Destination = settings.TargetDir
 
-	common.Log.Infof("Packaging chart %s", packaged.Path)
-	path, err := client.Run(packaged.Path, nil)
+	common.Log.Infof("Packaging chart %s", chartPath)
+	packagePath, err := client.Run(chartPath, nil)
 	if err != nil {
 		common.Log.Errorf("failed to package chart: %v", err)
 		return "", err
 	}
 
-	common.Log.Infof("Successfully packaged chart to %s", path)
-	return path, nil
+	common.Log.Infof("Successfully packaged chart to %s", packagePath)
+	return packagePath, nil
 }
 
-func (packaged *HelmizedManifests) Push(chartRef, remote string) (string, error) {
-	push := action.NewPushWithOpts()
-	return push.Run(chartRef, remote)
+func Push(packagedPath, remote string) (string, error) {
+	if !strings.HasPrefix(remote, "oci://") {
+		return "", fmt.Errorf("remote must start with oci://, got: %s", remote)
+	}
+	if fi, err := os.Stat(packagedPath); err != nil || fi.IsDir() {
+		return "", fmt.Errorf("invalid packaged chart path: %s", packagedPath)
+	}
+
+	chartData, err := os.ReadFile(packagedPath)
+	if err != nil {
+		common.Log.Errorf("failed to read packaged chart %s: %v", packagedPath, err)
+		return "", err
+	}
+	ch, err := loader.LoadFile(packagedPath)
+	if err != nil {
+		common.Log.Errorf("failed to load packaged chart %s: %v", packagedPath, err)
+		return "", err
+	}
+
+	rc, err := registry.NewClient(
+		registry.ClientOptEnableCache(true),
+	)
+	if err != nil {
+		common.Log.Errorf("failed to create registry client: %v", err)
+		return "", err
+	}
+
+	trimmed := strings.TrimSuffix(remote, "/")
+	parts := strings.Split(trimmed, "/")
+	last := parts[len(parts)-1]
+	chartName := ch.Metadata.Name
+
+	var ref string
+	if last == chartName {
+		ref = fmt.Sprintf("%s:%s", trimmed, ch.Metadata.Version)
+	} else {
+		ref = fmt.Sprintf("%s/%s:%s", trimmed, chartName, ch.Metadata.Version)
+	}
+
+	common.Log.Infof("Pushing chart %s version %s to %s", chartName, ch.Metadata.Version, ref)
+
+	result, err := rc.Push(chartData, ref)
+	if err != nil {
+		common.Log.Errorf("failed to push chart: %v", err)
+		return "", err
+	}
+
+	if result.Ref != ref {
+		common.Log.Warnf("Pushed chart reference %s does not match expected %s", result.Ref, ref)
+		return result.Ref, nil
+	} else {
+		common.Log.Infof("Successfully pushed chart to %s", ref)
+	}
+
+	return ref, nil
 }
 
 func clearTemplates(path string) error {

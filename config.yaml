@@ -8,6 +8,7 @@ helm:
   srcDir: "charts"
   targetDir: "target"
   lintK8s: "1.30.0"
+  remote: "oci://ghcr.io/kiemlicz/charter"
 
 pr:
   repo: "charter"

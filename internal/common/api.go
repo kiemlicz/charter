@@ -45,6 +45,7 @@ type HelmSettings struct {
 	SrcDir    string `mapstructure:"srcDir"`
 	TargetDir string `mapstructure:"targetDir"`
 	LintK8s   string `mapstructure:"lintK8s"`
+	Remote    string `mapstructure:"remote"`
 }
 
 type GithubRelease struct {
