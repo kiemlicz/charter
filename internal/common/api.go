@@ -89,7 +89,7 @@ func NewManifests(assetsData *map[string][]byte, version string) (*Manifests, er
 		}
 	}
 
-	Log.Debugf("Total manifests extracted: %d", len(manifests))
+	Log.Debugf("Manifests extracted: %d, CRDs: %d", len(manifests), len(crds))
 	return &Manifests{
 		Crds:      crds,
 		Manifests: manifests,

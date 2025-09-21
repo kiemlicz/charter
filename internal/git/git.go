@@ -38,7 +38,7 @@ func (g *Client) CreateBranch(defaultBranch, branchName string) error {
 	refName := gogitplumbing.NewBranchReferenceName(branchName)
 	err = g.Repository.Storer.SetReference(gogitplumbing.NewHashReference(refName, defaultRef.Hash()))
 	if err != nil {
-		common.Log.Errorf("Failed to create branch: %v", err)
+		common.Log.Errorf("Failed to create branch: %s, due to: %v", refName, err)
 		return err
 	}
 
@@ -64,7 +64,7 @@ func (g *Client) CreateBranch(defaultBranch, branchName string) error {
 			}
 			common.Log.Errorf("Failed to checkout branch: %s, worktree contains unstaged changes in files: %v", refName, files)
 		} else {
-			common.Log.Errorf("Failed to checkout branch: %v", err)
+			common.Log.Errorf("Failed to checkout branch: %s, due to: %v", refName, err)
 		}
 		return err
 	}
@@ -75,43 +75,21 @@ func (g *Client) CreateBranch(defaultBranch, branchName string) error {
 	return nil
 }
 
-// Commit commits all charts from charts.Path/{charts.Chart.Metadata.Name} and charts.Path/crds/{charts.CrdChart.Metadata.Name}
+// Commit commits all charts from
+// charts.Path/{charts.Chart.Metadata.Name} and
+// charts.Path/crds/{charts.CrdChart.Metadata.Name}
 func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 	wt, err := g.Repository.Worktree()
 	if err != nil {
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
 
-	status, err := wt.Status()
-	if err != nil {
-		return fmt.Errorf("failed to get status: %w", err)
-	}
-
 	chartPath := fmt.Sprintf("%s/%s", charts.Path, charts.Chart.Metadata.Name)
 	crdsChartPath := fmt.Sprintf("%s/%s", charts.Path, charts.CrdChart.Metadata.Name)
 
-	var unstageFiles []string
-	for filePath, status := range status {
-		if strings.HasPrefix(filePath, chartPath) || strings.HasPrefix(filePath, crdsChartPath) {
-			_, err = wt.Add(filePath)
-			if err != nil {
-				return fmt.Errorf("failed to add file %s: %w", filePath, err)
-			}
-		} else if status.Staging == gogit.Modified || status.Staging == gogit.Deleted || status.Worktree == gogit.Added {
-			unstageFiles = append(unstageFiles, filePath)
-		}
-	}
-
-	if len(unstageFiles) > 0 {
-		common.Log.Debugf("Files to unstage: %v", unstageFiles)
-		restoreOpts := &gogit.RestoreOptions{
-			Files:  unstageFiles,
-			Staged: true, // always unstage
-		}
-		if err := wt.Restore(restoreOpts); err != nil {
-			return fmt.Errorf("failed to restore: %w", err)
-		}
-		common.Log.Debugf("Restored non-chart files")
+	err = g.unstage(wt, chartPath, crdsChartPath)
+	if err != nil {
+		return fmt.Errorf("failed to unstage files irrelevant to: %s, due to: %v", charts.Path, err)
 	}
 
 	// Add all chart files
@@ -164,6 +142,36 @@ func (g *Client) Push(branch string) error {
 	//	return err
 	//}
 	common.Log.Infof("Pushed branch: %s", branch)
+	return nil
+}
+
+func (g *Client) unstage(wt *gogit.Worktree, chartPath, crdsChartPath string) error {
+	status, err := wt.Status()
+	if err != nil {
+		return fmt.Errorf("failed to get status: %w", err)
+	}
+	unstageFiles := make([]string, 0)
+	for filePath, status := range status {
+		if strings.HasPrefix(filePath, chartPath) || strings.HasPrefix(filePath, crdsChartPath) {
+			_, err = wt.Add(filePath)
+			if err != nil {
+				return fmt.Errorf("failed to add file %s: %w", filePath, err)
+			}
+		} else if status.Staging == gogit.Modified || status.Staging == gogit.Deleted || status.Worktree == gogit.Added || status.Worktree == gogit.Renamed {
+			unstageFiles = append(unstageFiles, filePath)
+		}
+	}
+	if len(unstageFiles) > 0 {
+		common.Log.Debugf("Files to unstage: %v", unstageFiles)
+		restoreOpts := &gogit.RestoreOptions{
+			Files:  unstageFiles,
+			Staged: true, // always unstage
+		}
+		if err := wt.Restore(restoreOpts); err != nil {
+			return fmt.Errorf("failed to restore: %w", err)
+		}
+		common.Log.Debugf("Restored non-chart files")
+	}
 	return nil
 }
 
