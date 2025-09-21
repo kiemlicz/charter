@@ -11,9 +11,16 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+      pull-requests: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
