@@ -1,11 +1,14 @@
 package git
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	gogitplumbing "github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/kiemlicz/charter/internal/common"
@@ -127,20 +130,31 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 	return nil
 }
 
-// Push pushes
-func (g *Client) Push(branch string) error {
-	// fixme test existing logic first then finish this method
-	//refName := gogitplumbing.NewBranchReferenceName(branch)
-	//err := g.Repository.Push(&gogit.PushOptions{
-	//	RemoteName: "origin",
-	//	RefSpecs: []gogitplumbing.RefSpec{
-	//		gogitplumbing.RefSpec(fmt.Sprintf("%s:%s", refName.String(), refName.String())),
-	//	},
-	//})
-	//if err != nil && err != gogit.NoErrAlreadyUpToDate {
-	//	common.Log.Errorf("Failed to push branch %s: %v", branch, err)
-	//	return err
-	//}
+// Push publishes the branch to the remote named "origin"
+func (g *Client) Push(ctx context.Context, branch string) error {
+	refName := gogitplumbing.NewBranchReferenceName(branch)
+
+	// Ensure local branch exists
+	if _, err := g.Repository.Reference(refName, true); err != nil {
+		common.Log.Errorf("Branch %s does not exist locally: %v", branch, err)
+		return err
+	}
+
+	err := g.Repository.PushContext(ctx, &gogit.PushOptions{
+		RemoteName: "origin",
+		RefSpecs: []config.RefSpec{
+			config.RefSpec(fmt.Sprintf("%s:%s", refName.String(), refName.String())),
+		},
+	})
+	if err != nil {
+		if errors.Is(err, gogit.NoErrAlreadyUpToDate) {
+			common.Log.Infof("Branch %s already up-to-date on remote", branch)
+			return nil
+		}
+		common.Log.Errorf("Failed to push branch %s: %v", branch, err)
+		return err
+	}
+
 	common.Log.Infof("Pushed branch: %s", branch)
 	return nil
 }

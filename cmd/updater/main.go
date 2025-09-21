@@ -78,6 +78,8 @@ func UpdateMode(config *common.Config) error {
 	wg.Wait()
 	close(createdCharts)
 
+	timeoutCtx, cancel := context.WithTimeout(mainCtx, 30*time.Second)
+	defer cancel()
 	//commit starts once we receive all charts and workdir is not externally modified
 	for charts := range createdCharts {
 		if charts == nil {
@@ -94,7 +96,7 @@ func UpdateMode(config *common.Config) error {
 		if err != nil {
 			return err
 		}
-		err = gitRepo.Push(branch)
+		err = gitRepo.Push(timeoutCtx, branch)
 		if err != nil {
 			return err
 		}
@@ -104,7 +106,7 @@ func UpdateMode(config *common.Config) error {
 }
 
 // PublishMode publishes the charts to the chart repository
-// iterates over all charts/ and releases them
+// iterates over all charts/* and releases them
 func PublishMode(config *common.Config) error {
 	common.Log.Infof("Publishing Charts")
 	return nil
