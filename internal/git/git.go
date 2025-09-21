@@ -170,7 +170,7 @@ func (g *Client) Push(branch string) error {
 func (g *Client) status(wt *gogit.Worktree) {
 	status, err := wt.Status()
 	if err != nil {
-		common.Log.Debugf("failed to get status: %w", err)
+		common.Log.Debugf("failed to get status: %v", err)
 		return
 	}
 	headRef, _ := g.Repository.Head()
