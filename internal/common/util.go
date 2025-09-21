@@ -64,11 +64,11 @@ func SetupConfig() (*Config, error) {
 
 	loader(".local/config.yaml")
 
-	// Fallback: if pr.authToken still empty, use GH_TOKEN env
+	// Fallback: if pr.authToken still empty, use GITHUB_TOKEN env
 	if v.GetString("pr.authToken") == "" {
-		if envTok := os.Getenv("GH_TOKEN"); envTok != "" {
+		if envTok := os.Getenv("GITHUB_TOKEN"); envTok != "" {
 			v.Set("pr.authToken", envTok)
-			Log.Infof("Using GH_TOKEN from environment for pr.authToken")
+			Log.Infof("Using GITHUB_TOKEN from environment for pr.authToken")
 		}
 	}
 
