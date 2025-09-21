@@ -14,7 +14,6 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
-	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/lint"
 	"helm.sh/helm/v3/pkg/registry"
 )
@@ -186,7 +185,6 @@ func Push(packagedPath, remote string) (string, error) {
 		return "", fmt.Errorf("invalid packaged chart path: %s", packagedPath)
 	}
 
-	helmEnv := cli.New()
 	chartData, err := os.ReadFile(packagedPath)
 	if err != nil {
 		common.Log.Errorf("failed to read packaged chart %s: %v", packagedPath, err)
@@ -200,7 +198,6 @@ func Push(packagedPath, remote string) (string, error) {
 
 	rc, err := registry.NewClient(
 		registry.ClientOptEnableCache(true),
-		registry.ClientOptCredentialsFile(helmEnv.RegistryConfig),
 	)
 	if err != nil {
 		common.Log.Errorf("failed to create registry client: %v", err)
@@ -227,7 +224,7 @@ func Push(packagedPath, remote string) (string, error) {
 		return "", err
 	}
 
-	if result.Ref != ref {
+	if fmt.Sprintf("oci://%s", result.Ref) != ref {
 		common.Log.Warnf("Pushed chart reference %s does not match expected %s", result.Ref, ref)
 		return result.Ref, nil
 	} else {
