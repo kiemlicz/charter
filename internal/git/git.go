@@ -11,6 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	gogitplumbing "github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/kiemlicz/charter/internal/common"
 	"github.com/kiemlicz/charter/internal/packager"
 )
@@ -131,7 +132,7 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 }
 
 // Push publishes the branch to the remote named "origin"
-func (g *Client) Push(ctx context.Context, branch string) error {
+func (g *Client) Push(ctx context.Context, prSettings *common.PullRequest, branch string) error {
 	refName := gogitplumbing.NewBranchReferenceName(branch)
 
 	// Ensure local branch exists
@@ -140,11 +141,17 @@ func (g *Client) Push(ctx context.Context, branch string) error {
 		return err
 	}
 
+	auth := &http.BasicAuth{
+		Username: "github-actions[bot]",
+		Password: prSettings.AuthToken,
+	}
+
 	err := g.Repository.PushContext(ctx, &gogit.PushOptions{
 		RemoteName: "origin",
 		RefSpecs: []config.RefSpec{
 			config.RefSpec(fmt.Sprintf("%s:%s", refName.String(), refName.String())),
 		},
+		Auth: auth,
 	})
 	if err != nil {
 		if errors.Is(err, gogit.NoErrAlreadyUpToDate) {

@@ -97,7 +97,7 @@ func UpdateMode(config *common.Config) error {
 		if err != nil {
 			return err
 		}
-		err = gitRepo.Push(timeoutCtx, branch)
+		err = gitRepo.Push(timeoutCtx, &config.PullRequest, branch)
 		if err != nil {
 			return err
 		}
