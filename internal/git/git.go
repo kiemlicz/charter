@@ -157,22 +157,22 @@ func (g *Client) Push(ctx context.Context, prSettings *common.PullRequest, branc
 		return err
 	}
 
-	var auth *http.BasicAuth
+	pushOptions := &gogit.PushOptions{
+		RemoteName: "origin",
+		RefSpecs: []config.RefSpec{
+			config.RefSpec(fmt.Sprintf("%s:%s", refName.String(), refName.String())),
+		},
+	}
+
 	if !g.usesSsh {
 		common.Log.Infof("Using HTTPS authentication for git operations")
-		auth = &http.BasicAuth{
+		pushOptions.Auth = &http.BasicAuth{
 			Username: "github-actions[bot]",
 			Password: prSettings.AuthToken,
 		}
 	}
 
-	err := g.Repository.PushContext(ctx, &gogit.PushOptions{
-		RemoteName: "origin",
-		RefSpecs: []config.RefSpec{
-			config.RefSpec(fmt.Sprintf("%s:%s", refName.String(), refName.String())),
-		},
-		Auth: auth, //fixme
-	})
+	err := g.Repository.PushContext(ctx, pushOptions)
 	if err != nil {
 		if errors.Is(err, gogit.NoErrAlreadyUpToDate) {
 			common.Log.Infof("Branch %s already up-to-date on remote", branch)
