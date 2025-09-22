@@ -89,6 +89,10 @@ func UpdateMode(config *common.Config) error {
 		// naming by main chart
 		branch := fmt.Sprintf("update/%s-%s", charts.Chart.Metadata.Name, charts.AppVersion())
 
+		//if err, exists := gitRepo.BranchExists(branch) {
+		//
+		//}
+
 		err = gitRepo.CreateBranch(config.PullRequest.DefaultBranch, branch)
 		if err != nil {
 			return err

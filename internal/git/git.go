@@ -16,6 +16,10 @@ import (
 	"github.com/kiemlicz/charter/internal/packager"
 )
 
+const (
+	RemoteOrigin = "origin"
+)
+
 type Client struct {
 	Repository *gogit.Repository
 	usesSsh    bool
@@ -45,6 +49,35 @@ func NewClient(repoPath string) (*Client, error) {
 		Repository: repo,
 		usesSsh:    usesSsh,
 	}, nil
+}
+
+func (g *Client) BranchExists(branchName string) (bool, error) {
+	// Normalize input
+	if branchName == "" {
+		return false, fmt.Errorf("branch name cannot be empty")
+	}
+	if strings.HasPrefix(branchName, "refs/heads/") {
+		branchName = strings.TrimPrefix(branchName, "refs/heads/")
+	}
+
+	// Ensure remote exists
+	if _, err := g.Repository.Remote(RemoteOrigin); err != nil {
+		return false, fmt.Errorf("remote 'origin' not found: %w", err)
+	}
+
+	// Try to fetch to update remote references (ignore auth as method signature has none)
+	// Ignore errors that are not critical for existence check (e.g., already up-to-date, auth issues on private repos)
+	_ = g.Repository.Fetch(&gogit.FetchOptions{RemoteName: RemoteOrigin, Tags: gogit.NoTags, Force: false, Prune: false})
+
+	remoteRefName := gogitplumbing.NewRemoteReferenceName(RemoteOrigin, branchName)
+	_, err := g.Repository.Reference(remoteRefName, true)
+	if err == nil {
+		return true, nil
+	}
+	if errors.Is(err, gogitplumbing.ErrReferenceNotFound) {
+		return false, nil
+	}
+	return false, fmt.Errorf("failed to check remote branch '%s': %w", branchName, err)
 }
 
 func (g *Client) CreateBranch(defaultBranch, branchName string) error {
