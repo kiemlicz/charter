@@ -18,6 +18,7 @@ import (
 
 type Client struct {
 	Repository *gogit.Repository
+	usesSsh    bool
 }
 
 func NewClient(repoPath string) (*Client, error) {
@@ -26,8 +27,23 @@ func NewClient(repoPath string) (*Client, error) {
 		common.Log.Errorf("Failed to open git repo at %s: %v", repoPath, err)
 		return nil, err
 	}
+
+	usesSsh := false
+	remotes, err := repo.Remotes()
+	if err == nil {
+		for _, remote := range remotes {
+			for _, url := range remote.Config().URLs {
+				if strings.HasPrefix(url, "git@") || strings.HasPrefix(url, "ssh://") {
+					usesSsh = true
+					break
+				}
+			}
+		}
+	}
+
 	return &Client{
 		Repository: repo,
+		usesSsh:    usesSsh,
 	}, nil
 }
 
@@ -141,9 +157,13 @@ func (g *Client) Push(ctx context.Context, prSettings *common.PullRequest, branc
 		return err
 	}
 
-	auth := &http.BasicAuth{
-		Username: "github-actions[bot]",
-		Password: prSettings.AuthToken,
+	var auth *http.BasicAuth
+	if !g.usesSsh {
+		common.Log.Infof("Using HTTPS authentication for git operations")
+		auth = &http.BasicAuth{
+			Username: "github-actions[bot]",
+			Password: prSettings.AuthToken,
+		}
 	}
 
 	err := g.Repository.PushContext(ctx, &gogit.PushOptions{
@@ -151,7 +171,7 @@ func (g *Client) Push(ctx context.Context, prSettings *common.PullRequest, branc
 		RefSpecs: []config.RefSpec{
 			config.RefSpec(fmt.Sprintf("%s:%s", refName.String(), refName.String())),
 		},
-		Auth: auth,
+		Auth: auth, //fixme
 	})
 	if err != nil {
 		if errors.Is(err, gogit.NoErrAlreadyUpToDate) {
