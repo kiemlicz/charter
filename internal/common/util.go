@@ -44,6 +44,7 @@ func SetupConfig() (*Config, error) {
 	v.SetConfigFile("config.yaml") // default config file full path, not adding paths as they pick single file
 
 	pflag.String("mode", "", "update|publish mode (overrides yaml file)")
+	pflag.Bool("offline", false, "skip git operations, useful for development")
 	pflag.String("log.level", "", "log level (overrides yaml file)")
 	pflag.String("pr.authToken", "", "user token for auth")
 	pflag.Parse()

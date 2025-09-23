@@ -24,6 +24,7 @@ type Config struct {
 	} `mapstructure:"log"`
 
 	ModeOfOperation ModeOfOperation `mapstructure:"mode"`
+	Offline         bool            `mapstructure:"offline"`
 
 	PullRequest PullRequest `mapstructure:"pr"`
 

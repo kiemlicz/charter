@@ -79,6 +79,11 @@ func UpdateMode(config *common.Config) error {
 	wg.Wait()
 	close(createdCharts)
 
+	if config.Offline {
+		common.Log.Infof("Offline mode, skipping git operations")
+		return nil
+	}
+
 	timeoutCtx, cancel := context.WithTimeout(mainCtx, 30*time.Second)
 	defer cancel()
 	//commit starts once we receive all charts and workdir is not externally modified
