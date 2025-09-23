@@ -2,3 +2,5 @@ kubevirt:
     configuration:
         developerConfiguration:
             featureGates: []
+kubevirtOperator:
+    replicas: 2

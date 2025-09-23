@@ -94,6 +94,7 @@ func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]com
 
 func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.Modification) (*map[string]any, *map[string]any, error) {
 	common.Log.Debugf("Applying %d modifications to manifest of kind: %v", len(*mods), (*manifest)[common.Kind])
+	common.Log.Tracef("Original manifest:\n%+v", manifest)
 
 	modifiedManifest := *manifest
 	extractedValues := make(map[string]any)
@@ -148,16 +149,11 @@ func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 			}
 			matches := common.ValuesRegexCompiled.FindStringSubmatch(mod.Expression)
 			if len(matches) > 1 { // matches[0] is the full match, matches[1] is the first capturing group
-				valsMap, err := m.resultToMap(vals)
+				valuesMap, err := m.wrapResult(vals, matches[1])
 				if err != nil {
 					return nil, nil, err
 				}
-				path := strings.Split(matches[1], ".")
-				for i := len(path) - 1; i >= 0; i-- {
-					*valsMap = map[string]any{path[i]: *valsMap}
-				}
-
-				extractedValues = *common.DeepMerge(&extractedValues, valsMap)
+				extractedValues = *common.DeepMerge(&extractedValues, valuesMap)
 			} else {
 				err = fmt.Errorf("no value path found in expression '%s'", mod.Expression)
 				return nil, nil, err
@@ -176,7 +172,51 @@ func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 		}
 		modifiedManifest = *resultManifest
 	}
+	common.Log.Tracef("Modified manifest:\n%+v", modifiedManifest)
+	common.Log.Tracef("Extracted values:\n%+v", extractedValues)
 	return &modifiedManifest, &extractedValues, nil
+}
+
+func (m *Modifier) wrapResult(result *list.List, underPath string) (*map[string]any, error) {
+	if result.Len() != 1 {
+		return nil, fmt.Errorf("yq result does not contain exactly one element")
+	}
+
+	// Decode the (single) result node into a Go value
+	v, err := m.resultToAny(result)
+	if err != nil {
+		common.Log.Errorf("Cannot decode valuesSelector result: %v", err)
+		return nil, err
+	}
+
+	// If it is already a map keep it, otherwise treat as scalar (or slice) and wrap
+	var e any = v
+	path := strings.Split(underPath, ".")
+	for i := len(path) - 1; i >= 0; i-- {
+		e = map[string]any{path[i]: e}
+	}
+
+	mapVal, ok := e.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("wrapped value is not a map[string]any")
+	}
+	return &mapVal, nil
+}
+
+//fixme unify these two
+
+// helper: generic unmarshal of a single yq result element into interface{}
+func (m *Modifier) resultToAny(result *list.List) (any, error) {
+	out := new(bytes.Buffer)
+	printer := yqlib.NewPrinter(m.encoder, yqlib.NewSinglePrinterWriter(out))
+	if err := printer.PrintResults(result); err != nil {
+		return nil, err
+	}
+	var v any
+	if err := yaml.Unmarshal(out.Bytes(), &v); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 func (m *Modifier) resultToMap(result *list.List) (*map[string]any, error) {
