@@ -56,6 +56,8 @@ type GithubRelease struct {
 	ChartName     string         `mapstructure:"chartName"`
 	Drop          []string       `mapstructure:"drop"`
 	Modifications []Modification `mapstructure:"modifications"`
+	AddValues     map[string]any `mapstructure:"addValues"`
+	AddCrdValues  map[string]any `mapstructure:"addCrdValues"`
 }
 
 type Modification struct {
@@ -66,17 +68,18 @@ type Modification struct {
 }
 
 type Manifests struct {
-	Crds      []map[string]any
-	Manifests []map[string]any
-	Version   string
-	Values    map[string]any
+	Crds       []map[string]any
+	Manifests  []map[string]any
+	Version    string
+	Values     map[string]any
+	CrdsValues map[string]any
 }
 
 func (m Manifests) ContainsCrds() bool {
 	return len(m.Crds) > 0
 }
 
-func NewManifests(assetsData *map[string][]byte, version string) (*Manifests, error) {
+func NewManifests(assetsData *map[string][]byte, version string, initialValues *map[string]any, initialCrdValues *map[string]any) (*Manifests, error) {
 	crds := make([]map[string]any, 0)
 	manifests := make([]map[string]any, 0)
 
@@ -97,10 +100,11 @@ func NewManifests(assetsData *map[string][]byte, version string) (*Manifests, er
 
 	Log.Debugf("Manifests extracted: %d, CRDs: %d", len(manifests), len(crds))
 	return &Manifests{
-		Crds:      crds,
-		Manifests: manifests,
-		Version:   version,
-		Values:    make(map[string]any),
+		Crds:       crds,
+		Manifests:  manifests,
+		Version:    version,
+		Values:     *initialValues,
+		CrdsValues: *initialCrdValues,
 	}, nil
 }
 

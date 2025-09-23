@@ -21,7 +21,7 @@ func TestParseAssets(t *testing.T) {
 	assetsData := readTestData(t)
 
 	//when
-	manifests, err := common.NewManifests(assetsData, "0.0.1")
+	manifests, err := common.NewManifests(assetsData, "0.0.1", new(map[string]any), new(map[string]any))
 
 	//then
 	if err != nil {
@@ -37,7 +37,7 @@ func TestParseAssets(t *testing.T) {
 }
 
 func TestParametrizeExtractsValues(t *testing.T) {
-	testManifests, _ := common.NewManifests(readTestData(t), "0.0.1")
+	testManifests, _ := common.NewManifests(readTestData(t), "0.0.1", new(map[string]any), new(map[string]any))
 	testCases := map[string]struct {
 		modifications   []common.Modification
 		expectedValues  map[string]any
@@ -125,7 +125,7 @@ func TestParametrizeExtractsValues(t *testing.T) {
 
 func TestParametrizeListElement(t *testing.T) {
 	//given
-	testManifests, _ := common.NewManifests(readTestData(t), "0.0.1")
+	testManifests, _ := common.NewManifests(readTestData(t), "0.0.1", new(map[string]any), new(map[string]any))
 	mods := []common.Modification{
 		*common.NewYqModification(".metadata.namespace |= \"{{ .Release.Namespace }}\""),
 		{

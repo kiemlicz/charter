@@ -37,8 +37,12 @@ githubReleases:
       - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration | toYaml | nindent 8 }}"'
         kind: KubeVirt
         valuesSelector: ".spec.configuration"
-      - expression: '.metadata.annotations."helm.sh/resource-policy" = "keep"'
+      - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
         kind: CustomResourceDefinition
+        valuesSelector: ".metadata.annotations"
+    addCrdValues: # content must be lowercase due to https://github.com/spf13/viper/issues/373
+      annotations:
+        "helm.sh/resource-policy": "keep"
   - owner: "kubevirt"
     repo: "containerized-data-importer"
     assets:
@@ -63,5 +67,9 @@ githubReleases:
       - expression: '.spec.workload |= "{{ .Values.cdi.workload | toYaml | nindent 8 }}"'
         kind: CDI
         valuesSelector: ".spec.workload"
-      - expression: '.metadata.annotations."helm.sh/resource-policy" = "keep"'
+      - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
         kind: CustomResourceDefinition
+        valuesSelector: ".metadata.annotations"
+    addCrdValues: # content must be lowercase due to https://github.com/spf13/viper/issues/373
+      annotations:
+          "helm.sh/resource-policy": "keep"

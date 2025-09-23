@@ -66,7 +66,7 @@ func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, ex
 		common.Log.Errorf("Failed to download assets for release %s: %v", releaseConfig.Repo, err)
 		return nil, err
 	}
-	manifests, err := common.NewManifests(assetsData, *releaseVersion)
+	manifests, err := common.NewManifests(assetsData, *releaseVersion, &releaseConfig.AddValues, &releaseConfig.AddCrdValues)
 	if err != nil {
 		common.Log.Errorf("Failed to collect manifests for release %s: %v", releaseConfig.Repo, err)
 		return nil, err

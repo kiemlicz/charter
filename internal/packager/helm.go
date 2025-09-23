@@ -259,7 +259,7 @@ func NewHelmCharts(helmSettings *common.HelmSettings, chartName string, m *commo
 	if m.ContainsCrds() {
 		crdsChartName := fmt.Sprintf("%s-crds", chartName)
 		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(m.Crds), crdsChartName)
-		crdsChart, err = NewHelmChart(crdsChartName, &m.Crds, new(map[string]any), m.Version, helmSettings)
+		crdsChart, err = NewHelmChart(crdsChartName, &m.Crds, &m.CrdsValues, m.Version, helmSettings)
 		if err != nil {
 			return nil, err
 		}
