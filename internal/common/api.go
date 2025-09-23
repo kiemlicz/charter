@@ -56,14 +56,13 @@ type GithubRelease struct {
 	ChartName     string         `mapstructure:"chartName"`
 	Drop          []string       `mapstructure:"drop"`
 	Modifications []Modification `mapstructure:"modifications"`
-	Replacements  string         `mapstructure:"replacements"` // must be kept as a string for yaml unmarshalling into kustomize replacements...
 }
 
 type Modification struct {
-	Expression     string `mapstructure:"expression"`
-	ValuesSelector string `mapstructure:"valuesSelector"`
-	Kind           string `mapstructure:"kind"` // if set, apply modification only to resources of this kind
-	Reject         string `mapstructure:"reject"`
+	Expression     string `mapstructure:"expression"`     // yq expression to modify manifest
+	ValuesSelector string `mapstructure:"valuesSelector"` // cuts selected section and moves to Values
+	Kind           string `mapstructure:"kind"`           // if set, apply modification only to resources of this kind
+	Reject         string `mapstructure:"reject"`         // don't apply for these
 }
 
 type Manifests struct {
