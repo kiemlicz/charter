@@ -39,7 +39,7 @@ githubReleases:
         valuesSelector: ".spec.configuration"
       - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
         kind: CustomResourceDefinition
-#        valuesSelector: ".metadata.annotations" # extracts null as not present in CR FIXME fallback to empty map
+        valuesSelector: ".metadata.annotations"
       - expression: '.spec.replicas |= "{{ .Values.kubevirtOperator.replicas }}"'
         kind: Deployment
         valuesSelector: ".spec.replicas"

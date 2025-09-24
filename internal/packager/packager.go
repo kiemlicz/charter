@@ -189,6 +189,10 @@ func (m *Modifier) wrapResult(result *list.List, underPath string) (*map[string]
 		return nil, err
 	}
 
+	if v == nil {
+		return new(map[string]any), nil // empty map for nil values
+	}
+
 	// If it is already a map keep it, otherwise treat as scalar (or slice) and wrap
 	var e any = v
 	path := strings.Split(underPath, ".")
@@ -203,34 +207,26 @@ func (m *Modifier) wrapResult(result *list.List, underPath string) (*map[string]
 	return &mapVal, nil
 }
 
-//fixme unify these two
-
 // helper: generic unmarshal of a single yq result element into interface{}
 func (m *Modifier) resultToAny(result *list.List) (any, error) {
-	out := new(bytes.Buffer)
-	printer := yqlib.NewPrinter(m.encoder, yqlib.NewSinglePrinterWriter(out))
-	if err := printer.PrintResults(result); err != nil {
-		return nil, err
-	}
-	var v any
-	if err := yaml.Unmarshal(out.Bytes(), &v); err != nil {
-		return nil, err
-	}
-	return v, nil
+	return decodeResult[any](m, result)
 }
 
 func (m *Modifier) resultToMap(result *list.List) (*map[string]any, error) {
+	return decodeResult[*map[string]any](m, result)
+}
+
+// generic decoder
+func decodeResult[T any](m *Modifier, result *list.List) (T, error) {
+	var zero T
 	out := new(bytes.Buffer)
 	printer := yqlib.NewPrinter(m.encoder, yqlib.NewSinglePrinterWriter(out))
-	var modifiedManifest map[string]any
 	if err := printer.PrintResults(result); err != nil {
-		common.Log.Errorf("Failed to print results for expression: %v", err)
-		return nil, err
+		return zero, err
 	}
-	if err := yaml.Unmarshal(out.Bytes(), &modifiedManifest); err != nil {
-		common.Log.Errorf("Failed to unmarshal modified YAML:\n%s\n%v", out.String(), err)
-		return nil, err
+	var v T
+	if err := yaml.Unmarshal(out.Bytes(), &v); err != nil {
+		return zero, err
 	}
-
-	return &modifiedManifest, nil
+	return v, nil
 }
