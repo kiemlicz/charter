@@ -12,3 +12,5 @@ cdi:
     workload:
         nodeSelector:
             kubernetes.io/os: linux
+cdiOperator:
+    replicas: 1

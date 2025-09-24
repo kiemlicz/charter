@@ -1,6 +1,9 @@
 kubevirt:
+    certificateRotateStrategy: {}
     configuration:
         developerConfiguration:
             featureGates: []
+    customizeComponents: {}
+    workloadUpdateStrategy: {}
 kubevirtOperator:
     replicas: 2

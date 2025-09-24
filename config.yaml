@@ -37,6 +37,15 @@ githubReleases:
       - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration | toYaml | nindent 8 }}"'
         kind: KubeVirt
         valuesSelector: ".spec.configuration"
+      - expression: '.spec.certificateRotateStrategy |= "{{ .Values.kubevirt.certificateRotateStrategy | toYaml | nindent 8 }}"'
+        kind: KubeVirt
+        valuesSelector: ".spec.certificateRotateStrategy"
+      - expression: '.spec.customizeComponents |= "{{ .Values.kubevirt.customizeComponents | toYaml | nindent 8 }}"'
+        kind: KubeVirt
+        valuesSelector: ".spec.customizeComponents"
+      - expression: '.spec.workloadUpdateStrategy |= "{{ .Values.kubevirt.workloadUpdateStrategy | toYaml | nindent 8 }}"'
+        kind: KubeVirt
+        valuesSelector: ".spec.workloadUpdateStrategy"
       - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
         kind: CustomResourceDefinition
         valuesSelector: ".metadata.annotations"
@@ -73,6 +82,9 @@ githubReleases:
       - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
         kind: CustomResourceDefinition
         valuesSelector: ".metadata.annotations"
+      - expression: '.spec.replicas |= "{{ .Values.cdiOperator.replicas }}"'
+        kind: Deployment
+        valuesSelector: ".spec.replicas"
     addCrdValues: # content must be lowercase due to https://github.com/spf13/viper/issues/373
       annotations:
           "helm.sh/resource-policy": "keep"

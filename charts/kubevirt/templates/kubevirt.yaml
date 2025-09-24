@@ -4,8 +4,8 @@ metadata:
     name: kubevirt
     namespace: {{ .Release.Namespace }}
 spec:
-    certificateRotateStrategy: {}
+    certificateRotateStrategy: {{ .Values.kubevirt.certificateRotateStrategy | toYaml | nindent 8 }}
     configuration: {{ .Values.kubevirt.configuration | toYaml | nindent 8 }}
-    customizeComponents: {}
+    customizeComponents: {{ .Values.kubevirt.customizeComponents | toYaml | nindent 8 }}
     imagePullPolicy: IfNotPresent
-    workloadUpdateStrategy: {}
+    workloadUpdateStrategy: {{ .Values.kubevirt.workloadUpdateStrategy | toYaml | nindent 8 }}
