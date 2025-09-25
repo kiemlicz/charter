@@ -13,4 +13,9 @@ cdi:
         nodeSelector:
             kubernetes.io/os: linux
 cdiOperator:
+    nodeSelector:
+        kubernetes.io/os: linux
     replicas: 1
+    tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists

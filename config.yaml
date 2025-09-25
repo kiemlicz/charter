@@ -52,6 +52,12 @@ githubReleases:
       - expression: '.spec.replicas |= "{{ .Values.kubevirtOperator.replicas }}"'
         kind: Deployment
         valuesSelector: ".spec.replicas"
+      - expression: '.spec.template.spec.nodeSelector |= "{{ .Values.kubevirtOperator.nodeSelector | toYaml | nindent 16 }}"'
+        kind: Deployment
+        valuesSelector: ".spec.template.spec.nodeSelector"
+      - expression: '.spec.template.spec.tolerations |= "{{ .Values.kubevirtOperator.tolerations | toYaml | nindent 16 }}"'
+        kind: Deployment
+        valuesSelector: ".spec.template.spec.tolerations"
     addCrdValues: # content must be lowercase due to https://github.com/spf13/viper/issues/373
       annotations:
         "helm.sh/resource-policy": "keep"
@@ -85,6 +91,12 @@ githubReleases:
       - expression: '.spec.replicas |= "{{ .Values.cdiOperator.replicas }}"'
         kind: Deployment
         valuesSelector: ".spec.replicas"
+      - expression: '.spec.template.spec.nodeSelector |= "{{ .Values.cdiOperator.nodeSelector | toYaml | nindent 16 }}"'
+        kind: Deployment
+        valuesSelector: ".spec.template.spec.nodeSelector"
+      - expression: '.spec.template.spec.tolerations |= "{{ .Values.cdiOperator.tolerations | toYaml | nindent 16 }}"'
+        kind: Deployment
+        valuesSelector: ".spec.template.spec.tolerations"
     addCrdValues: # content must be lowercase due to https://github.com/spf13/viper/issues/373
       annotations:
           "helm.sh/resource-policy": "keep"

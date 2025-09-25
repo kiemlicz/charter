@@ -93,17 +93,14 @@ spec:
                       readOnly: true
                     - mountPath: /profile-data
                       name: profile-data
-            nodeSelector:
-                kubernetes.io/os: linux
+            nodeSelector: {{ .Values.kubevirtOperator.nodeSelector | toYaml | nindent 16 }}
             priorityClassName: kubevirt-cluster-critical
             securityContext:
                 runAsNonRoot: true
                 seccompProfile:
                     type: RuntimeDefault
             serviceAccountName: kubevirt-operator
-            tolerations:
-                - key: CriticalAddonsOnly
-                  operator: Exists
+            tolerations: {{ .Values.kubevirtOperator.tolerations | toYaml | nindent 16 }}
             volumes:
                 - name: kubevirt-operator-certs
                   secret:

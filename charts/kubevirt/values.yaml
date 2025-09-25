@@ -6,4 +6,9 @@ kubevirt:
     customizeComponents: {}
     workloadUpdateStrategy: {}
 kubevirtOperator:
+    nodeSelector:
+        kubernetes.io/os: linux
     replicas: 2
+    tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
