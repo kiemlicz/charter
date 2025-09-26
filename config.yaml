@@ -46,6 +46,14 @@ githubReleases:
       - expression: '.spec.workloadUpdateStrategy |= "{{ .Values.kubevirt.workloadUpdateStrategy | toYaml | nindent 8 }}"'
         kind: KubeVirt
         valuesSelector: ".spec.workloadUpdateStrategy"
+      - expression: '.spec.workloads |= "{{ .Values.kubevirt.workloads | toYaml | nindent 8 }}"'
+        kind: KubeVirt
+      - expression: '.spec.infra |= "{{ .Values.kubevirt.infra | toYaml | nindent 8 }}"'
+        kind: KubeVirt
+      - expression: '.spec.monitorAccount |= "{{ .Values.kubevirt.monitor.account }}"'
+        kind: KubeVirt
+      - expression: '.spec.monitorNamespace |= "{{ .Values.kubevirt.monitor.namespace }}"'
+        kind: KubeVirt
       - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
         kind: CustomResourceDefinition
         valuesSelector: ".metadata.annotations"
@@ -58,6 +66,13 @@ githubReleases:
       - expression: '.spec.template.spec.tolerations |= "{{ .Values.kubevirtOperator.tolerations | toYaml | nindent 16 }}"'
         kind: Deployment
         valuesSelector: ".spec.template.spec.tolerations"
+    addValues:
+      kubevirt:
+        infra: {}
+        workloads: {}
+        monitor:
+          account: ""
+          namespace: ""
     addCrdValues: # content must be lowercase due to https://github.com/spf13/viper/issues/373
       annotations:
         "helm.sh/resource-policy": "keep"

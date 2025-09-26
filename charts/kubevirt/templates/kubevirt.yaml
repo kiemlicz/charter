@@ -8,4 +8,8 @@ spec:
     configuration: {{ .Values.kubevirt.configuration | toYaml | nindent 8 }}
     customizeComponents: {{ .Values.kubevirt.customizeComponents | toYaml | nindent 8 }}
     imagePullPolicy: IfNotPresent
+    infra: {{ .Values.kubevirt.infra | toYaml | nindent 8 }}
+    monitorAccount: {{ .Values.kubevirt.monitor.account }}
+    monitorNamespace: {{ .Values.kubevirt.monitor.namespace }}
     workloadUpdateStrategy: {{ .Values.kubevirt.workloadUpdateStrategy | toYaml | nindent 8 }}
+    workloads: {{ .Values.kubevirt.workloads | toYaml | nindent 8 }}

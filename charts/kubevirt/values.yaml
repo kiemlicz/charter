@@ -4,7 +4,12 @@ kubevirt:
         developerConfiguration:
             featureGates: []
     customizeComponents: {}
+    infra: {}
+    monitor:
+        account: ""
+        namespace: ""
     workloadUpdateStrategy: {}
+    workloads: {}
 kubevirtOperator:
     nodeSelector:
         kubernetes.io/os: linux
