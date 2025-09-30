@@ -721,6 +721,8 @@ rules:
         - get
         - list
         - watch
+        - patch
+        - delete
     - apiGroups:
         - kubevirt.io
       resources:
