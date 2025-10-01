@@ -209,11 +209,21 @@ func Push(packagedPath, remote string) (string, error) {
 	last := parts[len(parts)-1]
 	chartName := ch.Metadata.Name
 
-	var ref string
+	var ref string // oci://registry/repository:version
 	if last == chartName {
 		ref = fmt.Sprintf("%s:%s", trimmed, ch.Metadata.Version)
 	} else {
 		ref = fmt.Sprintf("%s/%s:%s", trimmed, chartName, ch.Metadata.Version)
+	}
+
+	exists, err := versionExistsInRegistry(rc, ref, ch.Metadata.Version)
+	if err != nil {
+		common.Log.Errorf("failed to check if version exists in registry: %v", err)
+		return "", err
+	}
+	if exists {
+		common.Log.Errorf("version %s of chart %s already exists in the registry %s", ch.Metadata.Version, chartName, ref)
+		return "", fmt.Errorf("version %s of chart %s already exists in the registry %s", ch.Metadata.Version, chartName, ref)
 	}
 
 	common.Log.Infof("Pushing chart %s version %s to %s", chartName, ch.Metadata.Version, ref)
@@ -232,6 +242,19 @@ func Push(packagedPath, remote string) (string, error) {
 	}
 
 	return ref, nil
+}
+
+func versionExistsInRegistry(rc *registry.Client, ref, version string) (bool, error) {
+	tags, err := rc.Tags(strings.TrimPrefix(ref, "oci://"))
+	if err != nil {
+		return false, fmt.Errorf("failed to fetch tags: %w", err)
+	}
+	for _, tag := range tags {
+		if tag == version {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func clearTemplates(path string) error {
