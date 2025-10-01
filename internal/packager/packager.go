@@ -52,6 +52,7 @@ func (m *Modifier) FilterManifests(manifests *common.Manifests, denyKindFilter [
 		Crds:       manifests.Crds,
 		Manifests:  filteredManifests,
 		Version:    manifests.Version,
+		AppVersion: manifests.AppVersion,
 		Values:     manifests.Values,
 		CrdsValues: manifests.CrdsValues,
 	}
@@ -87,6 +88,7 @@ func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]com
 		Crds:       modifiedCrds,
 		Manifests:  modifiedManifests,
 		Version:    manifests.Version,
+		AppVersion: manifests.AppVersion,
 		Values:     extractedValues,
 		CrdsValues: extractedCrdValues,
 	}, nil

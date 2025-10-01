@@ -153,12 +153,12 @@ func PublishMode(config *common.Config) error {
 func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*common.Manifests, error) {
 	common.Log.Infof("Updating release: %s", releaseConfig.Repo)
 
-	currentAppVersion, err := packager.PeekAppVersion(helmSettings.SrcDir, releaseConfig.ChartName)
+	currentVersion, currentAppVersion, err := packager.PeekVersions(helmSettings.SrcDir, releaseConfig.ChartName)
 	if err != nil {
 		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.ChartName, err)
 		return nil, err
 	}
-	manifests, err := ghup.FetchManifests(ctx, releaseConfig, currentAppVersion)
+	manifests, err := ghup.FetchManifests(ctx, releaseConfig, currentVersion, currentAppVersion)
 	if err != nil {
 		return nil, err
 	}

@@ -72,12 +72,18 @@ func SetupConfig() (*Config, error) {
 		}
 	}
 
+	return unmarshallConfig(v)
+}
+
+func unmarshallConfig(v *viper.Viper) (*Config, error) {
 	var config *Config
-	err := v.Unmarshal(&config)
+	err := v.Unmarshal(&config) //fixme keys are lowercased !!!!!
 	if err != nil {
 		log.Fatalf("Unable to decode into struct, %v", err)
 		return config, err
 	}
+	// write logic to read yamls with configured precedence and merge them...
+	//yaml.Unmarshal()
 
 	return config, nil
 }

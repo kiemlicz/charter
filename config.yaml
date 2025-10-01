@@ -43,6 +43,11 @@ githubReleases:
       - expression: '.spec.customizeComponents |= "{{ .Values.kubevirt.customizeComponents | toYaml | nindent 8 }}"'
         kind: KubeVirt
         valuesSelector: ".spec.customizeComponents"
+      - expression: '.spec.imagePullPolicy |= "{{ .Values.kubevirt.imagePullPolicy | toYaml | nindent 8 }}"'
+        kind: KubeVirt
+        valuesSelector: ".spec.imagePullPolicy"
+      - expression: '.spec.imagePullSecrets |= "{{ .Values.kubevirt.imagePullSecrets | toYaml | nindent 8 }}"'
+        kind: KubeVirt
       - expression: '.spec.workloadUpdateStrategy |= "{{ .Values.kubevirt.workloadUpdateStrategy | toYaml | nindent 8 }}"'
         kind: KubeVirt
         valuesSelector: ".spec.workloadUpdateStrategy"
@@ -50,9 +55,9 @@ githubReleases:
         kind: KubeVirt
       - expression: '.spec.infra |= "{{ .Values.kubevirt.infra | toYaml | nindent 8 }}"'
         kind: KubeVirt
-      - expression: '.spec.monitorAccount |= "{{ .Values.kubevirt.monitor.account }}"'
+      - expression: '.spec.monitorAccount |= "{{ .Values.kubevirt.monitorAccount }}"'
         kind: KubeVirt
-      - expression: '.spec.monitorNamespace |= "{{ .Values.kubevirt.monitor.namespace }}"'
+      - expression: '.spec.monitorNamespace |= "{{ .Values.kubevirt.monitorNamespace }}"'
         kind: KubeVirt
       - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
         kind: CustomResourceDefinition
@@ -68,12 +73,12 @@ githubReleases:
         valuesSelector: ".spec.template.spec.tolerations"
     addValues:
       kubevirt:
+        imagePullSecrets: []
         infra: {}
         workloads: {}
-        monitor:
-          account: ""
-          namespace: ""
-    addCrdValues: # content must be lowercase due to https://github.com/spf13/viper/issues/373
+        monitorAccount: ""
+        monitorNamespace: ""
+    addCrdValues:
       annotations:
         "helm.sh/resource-policy": "keep"
   - owner: "kubevirt"

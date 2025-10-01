@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/kiemlicz/charter/internal/common"
 	"gopkg.in/yaml.v3"
 )
@@ -21,7 +22,7 @@ func TestParseAssets(t *testing.T) {
 	assetsData := readTestData(t)
 
 	//when
-	manifests, err := common.NewManifests(assetsData, "0.0.1", new(map[string]any), new(map[string]any))
+	manifests, err := common.NewManifests(assetsData, mustSemver("0.0.1"), "0.0.1", new(map[string]any), new(map[string]any))
 
 	//then
 	if err != nil {
@@ -37,7 +38,7 @@ func TestParseAssets(t *testing.T) {
 }
 
 func TestParametrizeExtractsValues(t *testing.T) {
-	testManifests, _ := common.NewManifests(readTestData(t), "0.0.1", new(map[string]any), new(map[string]any))
+	testManifests, _ := common.NewManifests(readTestData(t), mustSemver("0.0.1"), "0.0.1", new(map[string]any), new(map[string]any))
 	testCases := map[string]struct {
 		modifications   []common.Modification
 		expectedValues  map[string]any
@@ -125,7 +126,7 @@ func TestParametrizeExtractsValues(t *testing.T) {
 
 func TestParametrizeListElement(t *testing.T) {
 	//given
-	testManifests, _ := common.NewManifests(readTestData(t), "0.0.1", new(map[string]any), new(map[string]any))
+	testManifests, _ := common.NewManifests(readTestData(t), mustSemver("0.0.1"), "0.0.1", new(map[string]any), new(map[string]any))
 	mods := []common.Modification{
 		*common.NewYqModification(".metadata.namespace |= \"{{ .Release.Namespace }}\""),
 		{
@@ -216,4 +217,12 @@ func mustYaml(v any) string {
 		panic(err)
 	}
 	return string(data)
+}
+
+func mustSemver(v string) *semver.Version {
+	s, err := semver.NewVersion(v)
+	if err != nil {
+		panic(err)
+	}
+	return s
 }

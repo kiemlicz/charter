@@ -3,6 +3,8 @@ package common
 import (
 	"regexp"
 	"strings"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 const (
@@ -70,7 +72,8 @@ type Modification struct {
 type Manifests struct {
 	Crds       []map[string]any
 	Manifests  []map[string]any
-	Version    string
+	Version    semver.Version
+	AppVersion string
 	Values     map[string]any
 	CrdsValues map[string]any
 }
@@ -79,7 +82,7 @@ func (m Manifests) ContainsCrds() bool {
 	return len(m.Crds) > 0
 }
 
-func NewManifests(assetsData *map[string][]byte, version string, initialValues *map[string]any, initialCrdValues *map[string]any) (*Manifests, error) {
+func NewManifests(assetsData *map[string][]byte, version *semver.Version, appVersion string, initialValues *map[string]any, initialCrdValues *map[string]any) (*Manifests, error) {
 	crds := make([]map[string]any, 0)
 	manifests := make([]map[string]any, 0)
 
@@ -102,7 +105,8 @@ func NewManifests(assetsData *map[string][]byte, version string, initialValues *
 	return &Manifests{
 		Crds:       crds,
 		Manifests:  manifests,
-		Version:    version,
+		Version:    *version,
+		AppVersion: appVersion,
 		Values:     *initialValues,
 		CrdsValues: *initialCrdValues,
 	}, nil

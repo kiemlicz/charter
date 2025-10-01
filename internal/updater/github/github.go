@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-github/v74/github"
 	"github.com/kiemlicz/charter/internal/common"
 )
@@ -46,7 +47,7 @@ func CreatePr(ctx context.Context, prSettings *common.PullRequest, srcBranch str
 	return nil
 }
 
-func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, existingAppVersion string) (*common.Manifests, error) {
+func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, existingVersion, existingAppVersion string) (*common.Manifests, error) {
 	client := github.NewClient(nil)
 	releaseData, err := downloadReleaseMeta(ctx, client, releaseConfig)
 	if err != nil {
@@ -60,18 +61,34 @@ func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, ex
 		common.Log.Infof("Helm chart %s is already up to date with version %s", releaseConfig.ChartName, existingAppVersion)
 		return nil, nil
 	}
+	version, err := takeNewerVersion(existingVersion, *releaseVersion) //todo add test for this
 
 	assetsData, err := downloadAssets(ctx, client, releaseConfig, releaseData)
 	if err != nil {
 		common.Log.Errorf("Failed to download assets for release %s: %v", releaseConfig.Repo, err)
 		return nil, err
 	}
-	manifests, err := common.NewManifests(assetsData, *releaseVersion, &releaseConfig.AddValues, &releaseConfig.AddCrdValues)
+	manifests, err := common.NewManifests(assetsData, version, *releaseVersion, &releaseConfig.AddValues, &releaseConfig.AddCrdValues)
 	if err != nil {
 		common.Log.Errorf("Failed to collect manifests for release %s: %v", releaseConfig.Repo, err)
 		return nil, err
 	}
 	return manifests, nil
+}
+
+func takeNewerVersion(existingVersion, remoteVersion string) (*semver.Version, error) {
+	semverExisting, _ := semver.NewVersion(existingVersion)
+	semverRemote, err := semver.NewVersion(remoteVersion)
+	if err != nil {
+		common.Log.Warnf("Remote version %s is not valid SemVer: %v, will use existing Chart's version: %s", remoteVersion, err, existingVersion)
+		return semverExisting, nil
+	}
+
+	if semverRemote.Compare(semverExisting) < 0 {
+		return semverExisting, nil
+	} else {
+		return semverRemote, nil
+	}
 }
 
 func downloadReleaseMeta(ctx context.Context, client *github.Client, release *common.GithubRelease) (*github.RepositoryRelease, error) {

@@ -70,13 +70,9 @@ func createTemplates(ch *chart.Chart, newManifests *[]map[string]any) error {
 	return nil
 }
 
-func updateChartManifest(ch *chart.Chart, appVersion string) error {
-	v, err := semver.NewVersion(appVersion)
-	if err != nil {
-		return fmt.Errorf("invalid appVersion (must also follow SemVer): %s, %w", appVersion, err)
-	}
+func updateChartManifest(ch *chart.Chart, version *semver.Version, appVersion string) error {
 	ch.Metadata.AppVersion = appVersion
-	ch.Metadata.Version = v.String()
+	ch.Metadata.Version = version.String()
 	ch.Metadata.Description = fmt.Sprintf("A Helm Chart for %s", ch.Metadata.Name)
 	return nil
 }
@@ -282,12 +278,12 @@ func NewHelmCharts(helmSettings *common.HelmSettings, chartName string, m *commo
 	if m.ContainsCrds() {
 		crdsChartName := fmt.Sprintf("%s-crds", chartName)
 		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(m.Crds), crdsChartName)
-		crdsChart, err = NewHelmChart(crdsChartName, &m.Crds, &m.CrdsValues, m.Version, helmSettings)
+		crdsChart, err = NewHelmChart(crdsChartName, m, true, helmSettings)
 		if err != nil {
 			return nil, err
 		}
 	}
-	mainChart, err := NewHelmChart(chartName, &m.Manifests, &m.Values, m.Version, helmSettings)
+	mainChart, err := NewHelmChart(chartName, m, false, helmSettings)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +297,16 @@ func NewHelmCharts(helmSettings *common.HelmSettings, chartName string, m *commo
 	return createdChart, nil
 }
 
-func NewHelmChart(chartName string, templates *[]map[string]any, vals *map[string]any, appVersion string, helmSettings *common.HelmSettings) (*chart.Chart, error) {
+func NewHelmChart(chartName string, m *common.Manifests, crds bool, helmSettings *common.HelmSettings) (*chart.Chart, error) {
+	version := m.Version
+	appVersion := m.AppVersion
+	vals := &m.Values
+	templates := &m.Manifests
+	if crds {
+		templates = &m.Crds
+		vals = &m.CrdsValues
+	}
+
 	chartPath, err := chartutil.Create(chartName, helmSettings.SrcDir) //overwrites
 	if err != nil {
 		common.Log.Errorf("Failed to create Helm chart in %s: %v", helmSettings.SrcDir, err)
@@ -319,7 +324,7 @@ func NewHelmChart(chartName string, templates *[]map[string]any, vals *map[strin
 		return nil, err
 	}
 
-	err = updateChartManifest(chartObj, appVersion)
+	err = updateChartManifest(chartObj, &version, appVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -337,12 +342,12 @@ func NewHelmChart(chartName string, templates *[]map[string]any, vals *map[strin
 	return chartObj, nil
 }
 
-func PeekAppVersion(chartDir, chartName string) (string, error) {
+func PeekVersions(chartDir, chartName string) (string, string, error) {
 	path := fmt.Sprintf("%s/%s", chartDir, chartName)
 	chartObj, err := loader.Load(path)
 	if err != nil {
 		common.Log.Errorf("Failed to load Helm chart from %s: %v", path, err)
-		return "", err
+		return "", "", err
 	}
-	return chartObj.AppVersion(), nil
+	return chartObj.Metadata.Version, chartObj.AppVersion(), nil
 }
