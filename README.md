@@ -20,14 +20,14 @@ allowing flexible transformation and templating of upstream manifests.
 
 **Note:** Install [`kubevirt-crds`](charts/kubevirt-crds) before deploying the main KubeVirt Chart
 
-`helm upgrade --install kubevirt-crds oci://ghcr.io/kiemlicz/charter/kubevirt-crds --version 1.6.2`
-
 - Chart's `AppVersion` matches [released manifests version](https://storage.googleapis.com/kubevirt-prow/release/kubevirt/kubevirt/stable.txt)  
 - Chart's `Version` usually matches the `AppVersion`, unless some templating was added and new version has not been released yet. Then the `-beta.N` version is used.
 
 ### Installation steps
 
-1. Create namespace for KubeVirt, with proper labels. To get right labels, consult
+1. `helm upgrade --install kubevirt-crds oci://ghcr.io/kiemlicz/charter/kubevirt-crds --version 1.6.2`
+
+2. Create namespace for KubeVirt, with proper labels. To get right labels, consult
    the [KubeVirt release manifests](https://github.com/kubevirt/kubevirt/releases)
 
 ```bash
@@ -42,7 +42,7 @@ metadata:
 EOF
 ```
 
-2. Inspect the [values](charts/kubevirt/values.yaml), override according to your use case
+3. Inspect the [values](charts/kubevirt/values.yaml), override according to your use case
 
 ```bash
 helm upgrade kubevirt oci://ghcr.io/kiemlicz/charter/kubevirt --version 1.6.2  
@@ -52,14 +52,14 @@ helm upgrade kubevirt oci://ghcr.io/kiemlicz/charter/kubevirt --version 1.6.2
 
 **Note:** Install [`cdi-crds`](charts/cdi-crds) before deploying the main CDI Chart
 
-`helm upgrade --install cdi-crds oci://ghcr.io/kiemlicz/charter/cdi-crds --version 1.63.1`
-
 - Chart's `AppVersion` matches [released manifests version](https://github.com/kubevirt/containerized-data-importer/releases/latest)  
 - Chart's `Version` usually matches the `AppVersion`, unless some templating was added and new version has not been released yet. Then the `-beta.N` version is used.
 
 ### Installation steps
 
-1. Create namespace for CDI (or use existing one, like `kubevirt`)
+1. `helm upgrade --install cdi-crds oci://ghcr.io/kiemlicz/charter/cdi-crds --version 1.63.1`
+
+2. Create namespace for CDI (or use existing one, like `kubevirt`)
 
 ```bash
 kubectl apply -f - <<EOF
@@ -72,7 +72,7 @@ metadata:
 EOF
 ```
 
-2. Inspect the [values](charts/cdi/values.yaml), override according to your use case
+3. Inspect the [values](charts/cdi/values.yaml), override according to your use case
 
 ```bash
 helm upgrade --install cdi oci://ghcr.io/kiemlicz/charter/cdi --version 1.63.1 
