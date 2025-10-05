@@ -34,24 +34,23 @@ githubReleases:
         reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
       - expression: '(.subjects[] | select(.name == "kubevirt-operator") .namespace) = "{{ .Release.Namespace }}"'
         kind: "RoleBinding|ClusterRoleBinding"
-      - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration | toYaml | nindent 8 }}"'
-        kind: KubeVirt
-        valuesSelector: ".spec.configuration"
       - expression: '.spec.certificateRotateStrategy |= "{{ .Values.kubevirt.certificateRotateStrategy | toYaml | nindent 8 }}"'
-        kind: KubeVirt
         valuesSelector: ".spec.certificateRotateStrategy"
+        kind: KubeVirt
+      - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration | toYaml | nindent 8 }}"'
+        valuesSelector: ".spec.configuration"
+        kind: KubeVirt
       - expression: '.spec.customizeComponents |= "{{ .Values.kubevirt.customizeComponents | toYaml | nindent 8 }}"'
-        kind: KubeVirt
         valuesSelector: ".spec.customizeComponents"
-      - expression: '.spec.imagePullPolicy |= "{{ .Values.kubevirt.imagePullPolicy | toYaml | nindent 8 }}"'
         kind: KubeVirt
+      - expression: '.spec.imagePullPolicy |= "{{ .Values.kubevirt.imagePullPolicy }}"'
         valuesSelector: ".spec.imagePullPolicy"
+        kind: KubeVirt
       - expression: '.spec.imagePullSecrets |= "{{ .Values.kubevirt.imagePullSecrets | toYaml | nindent 8 }}"'
         kind: KubeVirt
-      - expression: '.spec.workloadUpdateStrategy |= "{{ .Values.kubevirt.workloadUpdateStrategy | toYaml | nindent 8 }}"'
+      - expression: '.spec.imageRegistry |= "{{ .Values.kubevirt.imageRegistry }}"'
         kind: KubeVirt
-        valuesSelector: ".spec.workloadUpdateStrategy"
-      - expression: '.spec.workloads |= "{{ .Values.kubevirt.workloads | toYaml | nindent 8 }}"'
+      - expression: '.spec.imageTag |= "{{ .Values.kubevirt.imageTag }}"'
         kind: KubeVirt
       - expression: '.spec.infra |= "{{ .Values.kubevirt.infra | toYaml | nindent 8 }}"'
         kind: KubeVirt
@@ -59,22 +58,50 @@ githubReleases:
         kind: KubeVirt
       - expression: '.spec.monitorNamespace |= "{{ .Values.kubevirt.monitorNamespace }}"'
         kind: KubeVirt
+      - expression: '.spec.productComponent |= "{{ .Values.kubevirt.productComponent }}"'
+        kind: KubeVirt
+      - expression: '.spec.productName |= "{{ .Values.kubevirt.productName }}"'
+        kind: KubeVirt
+      - expression: '.spec.productVersion |= "{{ .Values.kubevirt.productVersion }}"'
+        kind: KubeVirt
+      - expression: '.spec.serviceMonitorNamespace |= "{{ .Values.kubevirt.serviceMonitorNamespace }}"'
+        kind: KubeVirt
+      - expression: '.spec.synchronizationPort |= "{{ .Values.kubevirt.synchronizationPort }}"'
+        kind: KubeVirt
+      - expression: '.spec.uninstallStrategy |= "{{ .Values.kubevirt.uninstallStrategy }}"'
+        kind: KubeVirt
+      - expression: '.spec.workloadUpdateStrategy |= "{{ .Values.kubevirt.workloadUpdateStrategy | toYaml | nindent 8 }}"'
+        kind: KubeVirt
+        valuesSelector: ".spec.workloadUpdateStrategy"
+      - expression: '.spec.workloads |= "{{ .Values.kubevirt.workloads | toYaml | nindent 8 }}"'
+        kind: KubeVirt
       - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
-        kind: CustomResourceDefinition
         valuesSelector: ".metadata.annotations"
+        kind: CustomResourceDefinition
       - expression: '.spec.replicas |= "{{ .Values.kubevirtOperator.replicas }}"'
-        kind: Deployment
         valuesSelector: ".spec.replicas"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].env |= "{{ .Values.kubevirtOperator.env | toYaml | nindent 20 }}"'
+        valuesSelector: ".spec.template.spec.containers[0].env"
+        kind: Deployment
       - expression: '.spec.template.spec.nodeSelector |= "{{ .Values.kubevirtOperator.nodeSelector | toYaml | nindent 16 }}"'
-        kind: Deployment
         valuesSelector: ".spec.template.spec.nodeSelector"
-      - expression: '.spec.template.spec.tolerations |= "{{ .Values.kubevirtOperator.tolerations | toYaml | nindent 16 }}"'
         kind: Deployment
+      - expression: '.spec.template.spec.tolerations |= "{{ .Values.kubevirtOperator.tolerations | toYaml | nindent 16 }}"'
         valuesSelector: ".spec.template.spec.tolerations"
+        kind: Deployment
     addValues:
       kubevirt:
         imagePullSecrets: []
+        imageRegistry: ""
+        imageTag: ""
         infra: {}
+        productComponent: ""
+        productName: ""
+        productVersion: ""
+        serviceMonitorNamespace: ""
+        synchronizationPort: ""
+        uninstallStrategy: ""
         workloads: {}
         monitorAccount: ""
         monitorNamespace: ""
@@ -96,27 +123,50 @@ githubReleases:
         reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
       - expression: '(.subjects[] | select(.name == "cdi-operator") .namespace) = "{{ .Release.Namespace }}"'
         kind: "RoleBinding|ClusterRoleBinding"
+      - expression: '.spec.certConfig |= "{{ .Values.cdi.certConfig | toYaml | nindent 8 }}"'
+        kind: CDI
+      - expression: '.spec.cloneStrategyOverride |= "{{ .Values.cdi.cloneStrategyOverride }}"'
+        kind: CDI
       - expression: '.spec.config |= "{{ .Values.cdi.config | toYaml | nindent 8 }}"'
-        kind: CDI
         valuesSelector: ".spec.config"
+        kind: CDI
+      - expression: '.spec.customizeComponents |= "{{ .Values.cdi.customizeComponents | toYaml | nindent 8 }}"'
+        kind: CDI
+      - expression: '.spec.imagePullPolicy |= "{{ .Values.cdi.imagePullPolicy }}"'
+        valuesSelector: ".spec.imagePullPolicy"
+        kind: CDI
       - expression: '.spec.infra |= "{{ .Values.cdi.infra | toYaml | nindent 8 }}"'
-        kind: CDI
         valuesSelector: ".spec.infra"
-      - expression: '.spec.workload |= "{{ .Values.cdi.workload | toYaml | nindent 8 }}"'
         kind: CDI
+      - expression: '.spec.priorityClass |= "{{ .Values.cdi.priorityClass }}"'
+        kind: CDI
+      - expression: '.spec.uninstallStrategy |= "{{ .Values.cdi.uninstallStrategy }}"'
+        kind: CDI
+      - expression: '.spec.workload |= "{{ .Values.cdi.workload | toYaml | nindent 8 }}"'
         valuesSelector: ".spec.workload"
+        kind: CDI
       - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
-        kind: CustomResourceDefinition
         valuesSelector: ".metadata.annotations"
+        kind: CustomResourceDefinition
       - expression: '.spec.replicas |= "{{ .Values.cdiOperator.replicas }}"'
-        kind: Deployment
         valuesSelector: ".spec.replicas"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].env |= "{{ .Values.cdiOperator.env | toYaml | nindent 20 }}"'
+        valuesSelector: ".spec.template.spec.containers[0].env"
+        kind: Deployment
       - expression: '.spec.template.spec.nodeSelector |= "{{ .Values.cdiOperator.nodeSelector | toYaml | nindent 16 }}"'
-        kind: Deployment
         valuesSelector: ".spec.template.spec.nodeSelector"
-      - expression: '.spec.template.spec.tolerations |= "{{ .Values.cdiOperator.tolerations | toYaml | nindent 16 }}"'
         kind: Deployment
+      - expression: '.spec.template.spec.tolerations |= "{{ .Values.cdiOperator.tolerations | toYaml | nindent 16 }}"'
         valuesSelector: ".spec.template.spec.tolerations"
-    addCrdValues: # content must be lowercase due to https://github.com/spf13/viper/issues/373
+        kind: Deployment
+    addCrdValues:
       annotations:
           "helm.sh/resource-policy": "keep"
+    addValues:
+      cdi:
+        certConfig: {}
+        cloneStrategyOverride: ""
+        customizeComponents: {}
+        priorityClass: ""
+        uninstallStrategy: ""

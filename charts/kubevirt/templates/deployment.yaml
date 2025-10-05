@@ -42,16 +42,8 @@ spec:
                     - "2"
                   command:
                     - virt-operator
-                  env:
-                    - name: VIRT_OPERATOR_IMAGE
-                      value: quay.io/kubevirt/virt-operator:v1.6.1
-                    - name: WATCH_NAMESPACE
-                      valueFrom:
-                        fieldRef:
-                            fieldPath: metadata.annotations['olm.targetNamespaces']
-                    - name: KUBEVIRT_VERSION
-                      value: v1.6.1
-                  image: quay.io/kubevirt/virt-operator:v1.6.1
+                  env: {{ .Values.kubevirtOperator.env | toYaml | nindent 20 }}
+                  image: quay.io/kubevirt/virt-operator:v1.6.2
                   imagePullPolicy: IfNotPresent
                   livenessProbe:
                     httpGet:

@@ -4,13 +4,31 @@ kubevirt:
         developerConfiguration:
             featureGates: []
     customizeComponents: {}
+    imagePullPolicy: IfNotPresent
+    imagePullSecrets: []
+    imageRegistry: ""
+    imageTag: ""
     infra: {}
-    monitor:
-        account: ""
-        namespace: ""
+    monitorAccount: ""
+    monitorNamespace: ""
+    productComponent: ""
+    productName: ""
+    productVersion: ""
+    serviceMonitorNamespace: ""
+    synchronizationPort: ""
+    uninstallStrategy: ""
     workloadUpdateStrategy: {}
     workloads: {}
 kubevirtOperator:
+    env:
+        - name: VIRT_OPERATOR_IMAGE
+          value: quay.io/kubevirt/virt-operator:v1.6.2
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+                fieldPath: metadata.annotations['olm.targetNamespaces']
+        - name: KUBEVIRT_VERSION
+          value: v1.6.2
     nodeSelector:
         kubernetes.io/os: linux
     replicas: 2

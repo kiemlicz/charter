@@ -3,4 +3,4 @@ appVersion: v1.63.1
 description: A Helm Chart for cdi
 name: cdi
 type: application
-version: 1.63.1
+version: 1.63.2-beta.1

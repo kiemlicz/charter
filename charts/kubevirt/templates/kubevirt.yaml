@@ -7,9 +7,18 @@ spec:
     certificateRotateStrategy: {{ .Values.kubevirt.certificateRotateStrategy | toYaml | nindent 8 }}
     configuration: {{ .Values.kubevirt.configuration | toYaml | nindent 8 }}
     customizeComponents: {{ .Values.kubevirt.customizeComponents | toYaml | nindent 8 }}
-    imagePullPolicy: IfNotPresent
+    imagePullPolicy: {{ .Values.kubevirt.imagePullPolicy }}
+    imagePullSecrets: {{ .Values.kubevirt.imagePullSecrets | toYaml | nindent 8 }}
+    imageRegistry: {{ .Values.kubevirt.imageRegistry }}
+    imageTag: {{ .Values.kubevirt.imageTag }}
     infra: {{ .Values.kubevirt.infra | toYaml | nindent 8 }}
-    monitorAccount: {{ .Values.kubevirt.monitor.account }}
-    monitorNamespace: {{ .Values.kubevirt.monitor.namespace }}
+    monitorAccount: {{ .Values.kubevirt.monitorAccount }}
+    monitorNamespace: {{ .Values.kubevirt.monitorNamespace }}
+    productComponent: {{ .Values.kubevirt.productComponent }}
+    productName: {{ .Values.kubevirt.productName }}
+    productVersion: {{ .Values.kubevirt.productVersion }}
+    serviceMonitorNamespace: {{ .Values.kubevirt.serviceMonitorNamespace }}
+    synchronizationPort: {{ .Values.kubevirt.synchronizationPort }}
+    uninstallStrategy: {{ .Values.kubevirt.uninstallStrategy }}
     workloadUpdateStrategy: {{ .Values.kubevirt.workloadUpdateStrategy | toYaml | nindent 8 }}
     workloads: {{ .Values.kubevirt.workloads | toYaml | nindent 8 }}
