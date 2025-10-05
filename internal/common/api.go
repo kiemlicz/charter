@@ -22,51 +22,51 @@ type ModeOfOperation string
 
 type Config struct {
 	Log struct {
-		Level string `mapstructure:"level"`
-	} `mapstructure:"log"`
+		Level string `koanf:"level"`
+	} `koanf:"log"`
 
-	ModeOfOperation ModeOfOperation `mapstructure:"mode"`
-	Offline         bool            `mapstructure:"offline"`
+	ModeOfOperation ModeOfOperation `koanf:"mode"`
+	Offline         bool            `koanf:"offline"`
 
-	PullRequest PullRequest `mapstructure:"pr"`
+	PullRequest PullRequest `koanf:"pr"`
 
-	Helm HelmSettings `mapstructure:"helm"`
+	Helm HelmSettings `koanf:"helm"`
 
-	Releases []GithubRelease `mapstructure:"githubReleases"`
+	Releases []GithubRelease `koanf:"githubReleases"`
 }
 
 type PullRequest struct {
-	DefaultBranch string `mapstructure:"defaultBranch"`
-	Title         string `mapstructure:"title"`
-	Body          string `mapstructure:"body"`
-	Repo          string `mapstructure:"repo"`
-	Owner         string `mapstructure:"owner"`
-	AuthToken     string `mapstructure:"authToken"`
+	DefaultBranch string `koanf:"defaultBranch"`
+	Title         string `koanf:"title"`
+	Body          string `koanf:"body"`
+	Repo          string `koanf:"repo"`
+	Owner         string `koanf:"owner"`
+	AuthToken     string `koanf:"authToken"`
 }
 
 type HelmSettings struct {
-	SrcDir    string `mapstructure:"srcDir"`
-	TargetDir string `mapstructure:"targetDir"`
-	LintK8s   string `mapstructure:"lintK8s"`
-	Remote    string `mapstructure:"remote"`
+	SrcDir    string `koanf:"srcDir"`
+	TargetDir string `koanf:"targetDir"`
+	LintK8s   string `koanf:"lintK8s"`
+	Remote    string `koanf:"remote"`
 }
 
 type GithubRelease struct {
-	Owner         string         `mapstructure:"owner"`
-	Repo          string         `mapstructure:"repo"`
-	Assets        []string       `mapstructure:"assets"`
-	ChartName     string         `mapstructure:"chartName"`
-	Drop          []string       `mapstructure:"drop"`
-	Modifications []Modification `mapstructure:"modifications"`
-	AddValues     map[string]any `mapstructure:"addValues"`
-	AddCrdValues  map[string]any `mapstructure:"addCrdValues"`
+	Owner         string         `koanf:"owner"`
+	Repo          string         `koanf:"repo"`
+	Assets        []string       `koanf:"assets"`
+	ChartName     string         `koanf:"chartName"`
+	Drop          []string       `koanf:"drop"`
+	Modifications []Modification `koanf:"modifications"`
+	AddValues     map[string]any `koanf:"addValues"`
+	AddCrdValues  map[string]any `koanf:"addCrdValues"`
 }
 
 type Modification struct {
-	Expression     string `mapstructure:"expression"`     // yq expression to modify manifest
-	ValuesSelector string `mapstructure:"valuesSelector"` // cuts selected section and moves to Values
-	Kind           string `mapstructure:"kind"`           // if set, apply modification only to resources of this kind
-	Reject         string `mapstructure:"reject"`         // don't apply for these
+	Expression     string `koanf:"expression"`     // yq expression to modify manifest
+	ValuesSelector string `koanf:"valuesSelector"` // cuts selected section and moves to Values
+	Kind           string `koanf:"kind"`           // if set, apply modification only to resources of this kind
+	Reject         string `koanf:"reject"`         // don't apply for these
 }
 
 type Manifests struct {

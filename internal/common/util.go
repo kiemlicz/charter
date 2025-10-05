@@ -2,15 +2,19 @@ package common
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"strings"
 
+	kyaml "github.com/knadh/koanf/parsers/yaml"
+	kfile "github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/posflag"
+	"github.com/knadh/koanf/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 
 	glog "gopkg.in/op/go-logging.v1"
@@ -39,53 +43,51 @@ func Setup(logLevel string) {
 }
 
 func SetupConfig() (*Config, error) {
-	v := viper.New()
-
-	v.SetConfigFile("config.yaml") // default config file full path, not adding paths as they pick single file
-
-	pflag.String("mode", "", "update|publish mode (overrides yaml file)")
-	pflag.Bool("offline", false, "skip git operations, useful for development")
-	pflag.String("log.level", "", "log level (overrides yaml file)")
-	pflag.String("pr.authToken", "", "user token for auth")
-	pflag.Parse()
-	_ = v.BindPFlags(pflag.CommandLine)
-
-	if err := v.ReadInConfig(); err != nil {
-		panic(fmt.Errorf("error reading config file, %s", err))
+	f := pflag.NewFlagSet("config", pflag.ContinueOnError)
+	f.Usage = func() {
+		fmt.Println(f.FlagUsages())
+		os.Exit(0)
+	}
+	f.String("mode", "", "update|publish mode (overrides yaml file)")
+	f.Bool("offline", false, "skip git operations, useful for development")
+	f.String("log.level", "", "log level (overrides yaml file)")
+	f.String("pr.authToken", "", "user token for auth")
+	if err := f.Parse(os.Args[1:]); err != nil {
+		log.Fatalf("error parsing flags: %v", err)
 	}
 
-	loader := func(configFullPath string) {
-		if _, err := os.Stat(configFullPath); err == nil {
-			v.SetConfigFile(configFullPath)
-			if err := v.MergeInConfig(); err != nil {
-				panic(fmt.Errorf("error merging config file, %s", err))
+	k := koanf.NewWithConf(koanf.Conf{
+		Delim:       ".",
+		StrictMerge: true,
+	})
+	parser := kyaml.Parser()
+	files := []string{"config.yaml", ".local/config.yaml"}
+
+	for _, file := range files {
+		if fileExists(file) {
+			if err := k.Load(kfile.Provider(file), parser); err != nil {
+				log.Fatalf("error loading config: %v", err)
 			}
 		}
 	}
+	if err := k.Load(posflag.Provider(f, ".", k), nil); err != nil {
+		log.Fatalf("error loading config: %v", err)
+	}
 
-	loader(".local/config.yaml")
+	var config Config
+	err := k.Unmarshal("", &config)
+	if err != nil {
+		log.Fatalf("error unmarshalling config: %v", err)
+	}
 
 	// Fallback: if pr.authToken still empty, use GITHUB_TOKEN env
-	if v.GetString("pr.authToken") == "" {
+	if config.PullRequest.AuthToken == "" {
 		if envTok := os.Getenv("GITHUB_TOKEN"); envTok != "" {
-			v.Set("pr.authToken", envTok)
+			config.PullRequest.AuthToken = envTok
 		}
 	}
 
-	return unmarshallConfig(v)
-}
-
-func unmarshallConfig(v *viper.Viper) (*Config, error) {
-	var config *Config
-	err := v.Unmarshal(&config) //fixme keys are lowercased !!!!!
-	if err != nil {
-		log.Fatalf("Unable to decode into struct, %v", err)
-		return config, err
-	}
-	// write logic to read yamls with configured precedence and merge them...
-	//yaml.Unmarshal()
-
-	return config, nil
+	return &config, nil
 }
 
 func DeepMerge(first *map[string]any, second *map[string]any) *map[string]any {
@@ -132,4 +134,9 @@ func ExtractYamls(assetData []byte) (*[]map[string]any, error) {
 
 	Log.Infof("Successfully unmarshalled %d documents", len(documents))
 	return &documents, nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return !errors.Is(err, os.ErrNotExist)
 }
