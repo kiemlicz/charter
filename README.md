@@ -1,6 +1,6 @@
 # Helm Chart generator
 
-This project automates the creation and maintenance of Helm Charts from remote Kubernetes manifests. 
+This project automates the creation and maintenance of Helm Charts from remote Kubernetes manifests.  
 It is designed to simplify the upgrade process for projects such as KubeVirt, which lack official Helm Charts.
 
 Remote releases are periodically checked. 
