@@ -20,6 +20,8 @@ allowing flexible transformation and templating of upstream manifests.
 
 **Note:** Install [`kubevirt-crds`](charts/kubevirt-crds) before deploying the main KubeVirt Chart
 
+`helm upgrade --install kubevirt-crds oci://ghcr.io/kiemlicz/charter/kubevirt-crds --version 1.6.2`
+
 - Chart's `AppVersion` matches [released manifests version](https://storage.googleapis.com/kubevirt-prow/release/kubevirt/kubevirt/stable.txt)  
 - Chart's `Version` usually matches the `AppVersion`, unless some templating was added and new version has not been released yet. Then the `-beta.N` version is used.
 
@@ -49,6 +51,8 @@ helm upgrade kubevirt oci://ghcr.io/kiemlicz/charter/kubevirt --version 1.6.2
 ## CDI
 
 **Note:** Install [`cdi-crds`](charts/cdi-crds) before deploying the main CDI Chart
+
+`helm upgrade --install cdi-crds oci://ghcr.io/kiemlicz/charter/cdi-crds --version 1.63.1`
 
 - Chart's `AppVersion` matches [released manifests version](https://github.com/kubevirt/containerized-data-importer/releases/latest)  
 - Chart's `Version` usually matches the `AppVersion`, unless some templating was added and new version has not been released yet. Then the `-beta.N` version is used.
