@@ -65,12 +65,12 @@ func TestParametrizeExtractsValues(t *testing.T) {
 				*common.NewYqModification(".metadata.namespace |= \"{{ .Release.Namespace }}\""),
 				{
 					Expression:     ".spec.configuration |= \"{{ .Values.kubevirt.configuration }}\"",
-					ValuesSelector: ".spec.configuration",
+					ValuesSelector: []string{".spec.configuration"},
 					Kind:           "KubeVirt",
 				},
 				{
 					Expression:     ".spec.customizeComponents |= \"{{ .Values.kubevirt.customizeComponents }}\"",
-					ValuesSelector: ".spec.customizeComponents",
+					ValuesSelector: []string{".spec.customizeComponents"},
 					Kind:           "KubeVirt",
 				},
 			},
