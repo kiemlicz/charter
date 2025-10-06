@@ -143,22 +143,25 @@ func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 			}
 		}
 
-		if mod.ValuesSelector != "" {
-			vals, err := m.evaluator.EvaluateNodes(mod.ValuesSelector, candidNode)
-			if err != nil {
-				common.Log.Errorf("Failed to apply values selector '%s' on manifest: %v", mod.ValuesSelector, err)
-				return nil, nil, err
-			}
-			matches := common.ValuesRegexCompiled.FindStringSubmatch(mod.Expression)
-			if len(matches) > 1 { // matches[0] is the full match, matches[1] is the first capturing group
-				valuesMap, err := m.wrapResult(vals, matches[1])
+		if mod.ValuesSelector != nil {
+			matches := common.ValuesRegexCompiled.FindAllStringSubmatch(mod.Expression, -1)
+			for i, sel := range mod.ValuesSelector {
+				vals, err := m.evaluator.EvaluateNodes(sel, candidNode)
 				if err != nil {
+					common.Log.Errorf("Failed to apply values selector '%s' on manifest: %v", mod.ValuesSelector, err)
 					return nil, nil, err
 				}
-				extractedValues = *common.DeepMerge(&extractedValues, valuesMap)
-			} else {
-				err = fmt.Errorf("no value path found in expression '%s'", mod.Expression)
-				return nil, nil, err
+
+				if len(matches) >= 1 {
+					valuesMap, err := m.wrapResult(vals, matches[i][1])
+					if err != nil {
+						return nil, nil, err
+					}
+					extractedValues = *common.DeepMerge(&extractedValues, valuesMap)
+				} else {
+					err = fmt.Errorf("no value path found in expression '%s'", mod.Expression)
+					return nil, nil, err
+				}
 			}
 		}
 

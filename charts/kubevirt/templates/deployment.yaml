@@ -22,29 +22,13 @@ spec:
                 prometheus.kubevirt.io: "true"
             name: virt-operator
         spec:
-            affinity:
-                podAntiAffinity:
-                    preferredDuringSchedulingIgnoredDuringExecution:
-                        - podAffinityTerm:
-                            labelSelector:
-                                matchExpressions:
-                                    - key: kubevirt.io
-                                      operator: In
-                                      values:
-                                        - virt-operator
-                            topologyKey: kubernetes.io/hostname
-                          weight: 1
+            affinity: {{ .Values.kubevirtOperator.affinity | toYaml | nindent 16 }}
             containers:
-                - args:
-                    - --port
-                    - "8443"
-                    - -v
-                    - "2"
-                  command:
-                    - virt-operator
+                - args: {{ .Values.kubevirtOperator.args | toYaml | nindent 20 }}
+                  command: {{ .Values.kubevirtOperator.command | toYaml | nindent 20 }}
                   env: {{ .Values.kubevirtOperator.env | toYaml | nindent 20 }}
-                  image: quay.io/kubevirt/virt-operator:v1.6.2
-                  imagePullPolicy: IfNotPresent
+                  image: {{ .Values.kubevirtOperator.image.repository }}:{{ .Values.kubevirtOperator.image.tag }}
+                  imagePullPolicy: {{ .Values.kubevirtOperator.imagePullPolicy }}
                   livenessProbe:
                     httpGet:
                         path: /metrics
@@ -67,36 +51,13 @@ spec:
                         scheme: HTTPS
                     initialDelaySeconds: 5
                     timeoutSeconds: 10
-                  resources:
-                    requests:
-                        cpu: 10m
-                        memory: 450Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                        drop:
-                            - ALL
-                    seccompProfile:
-                        type: RuntimeDefault
+                  resources: {{ .Values.kubevirtOperator.resources | toYaml | nindent 20 }}
+                  securityContext: {{ .Values.kubevirtOperator.securityContext | toYaml | nindent 20 }}
                   terminationMessagePolicy: FallbackToLogsOnError
-                  volumeMounts:
-                    - mountPath: /etc/virt-operator/certificates
-                      name: kubevirt-operator-certs
-                      readOnly: true
-                    - mountPath: /profile-data
-                      name: profile-data
+                  volumeMounts: {{ .Values.kubevirtOperator.volumeMounts | toYaml | nindent 20 }}
             nodeSelector: {{ .Values.kubevirtOperator.nodeSelector | toYaml | nindent 16 }}
             priorityClassName: kubevirt-cluster-critical
-            securityContext:
-                runAsNonRoot: true
-                seccompProfile:
-                    type: RuntimeDefault
+            securityContext: {{ .Values.kubevirtOperator.podSecurityContext | toYaml | nindent 16 }}
             serviceAccountName: kubevirt-operator
             tolerations: {{ .Values.kubevirtOperator.tolerations | toYaml | nindent 16 }}
-            volumes:
-                - name: kubevirt-operator-certs
-                  secret:
-                    optional: true
-                    secretName: kubevirt-operator-certs
-                - emptyDir: {}
-                  name: profile-data
+            volumes: {{ .Values.kubevirtOperator.volumes | toYaml | nindent 16 }}

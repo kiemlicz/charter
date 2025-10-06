@@ -19,6 +19,18 @@ cdi:
         nodeSelector:
             kubernetes.io/os: linux
 cdiOperator:
+    affinity:
+        podAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                        matchExpressions:
+                            - key: cdi.kubevirt.io
+                              operator: In
+                              values:
+                                - cdi-operator
+                    topologyKey: kubernetes.io/hostname
+                  weight: 1
     env:
         - name: DEPLOY_CLUSTER_RESOURCES
           value: "true"
@@ -43,9 +55,27 @@ cdiOperator:
         - name: PULL_POLICY
           value: IfNotPresent
         - name: MONITORING_NAMESPACE
+    image:
+        repository: quay.io/kubevirt/cdi-operator
+        tag: v1.63.1
+    imagePullPolicy: IfNotPresent
     nodeSelector:
         kubernetes.io/os: linux
+    podSecurityContext:
+        runAsNonRoot: true
     replicas: 1
+    resources:
+        requests:
+            cpu: 100m
+            memory: 150Mi
+    securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+            drop:
+                - ALL
+        runAsNonRoot: true
+        seccompProfile:
+            type: RuntimeDefault
     tolerations:
         - key: CriticalAddonsOnly
           operator: Exists

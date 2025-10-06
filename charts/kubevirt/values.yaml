@@ -20,6 +20,25 @@ kubevirt:
     workloadUpdateStrategy: {}
     workloads: {}
 kubevirtOperator:
+    affinity:
+        podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+                - podAffinityTerm:
+                    labelSelector:
+                        matchExpressions:
+                            - key: kubevirt.io
+                              operator: In
+                              values:
+                                - virt-operator
+                    topologyKey: kubernetes.io/hostname
+                  weight: 1
+    args:
+        - --port
+        - "8443"
+        - -v
+        - "2"
+    command:
+        - virt-operator
     env:
         - name: VIRT_OPERATOR_IMAGE
           value: quay.io/kubevirt/virt-operator:v1.6.2
@@ -29,9 +48,41 @@ kubevirtOperator:
                 fieldPath: metadata.annotations['olm.targetNamespaces']
         - name: KUBEVIRT_VERSION
           value: v1.6.2
+    image:
+        repository: quay.io/kubevirt/virt-operator
+        tag: v1.6.2
+    imagePullPolicy: IfNotPresent
     nodeSelector:
         kubernetes.io/os: linux
+    podSecurityContext:
+        runAsNonRoot: true
+        seccompProfile:
+            type: RuntimeDefault
     replicas: 2
+    resources:
+        requests:
+            cpu: 10m
+            memory: 450Mi
+    securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+            drop:
+                - ALL
+        seccompProfile:
+            type: RuntimeDefault
     tolerations:
         - key: CriticalAddonsOnly
           operator: Exists
+    volumeMounts:
+        - mountPath: /etc/virt-operator/certificates
+          name: kubevirt-operator-certs
+          readOnly: true
+        - mountPath: /profile-data
+          name: profile-data
+    volumes:
+        - name: kubevirt-operator-certs
+          secret:
+            optional: true
+            secretName: kubevirt-operator-certs
+        - emptyDir: {}
+          name: profile-data

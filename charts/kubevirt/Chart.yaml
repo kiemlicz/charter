@@ -3,4 +3,4 @@ appVersion: v1.6.2
 description: A Helm Chart for kubevirt
 name: kubevirt
 type: application
-version: 1.6.2
+version: 1.6.3-beta.1

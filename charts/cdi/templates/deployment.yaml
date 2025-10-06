@@ -25,43 +25,21 @@ spec:
                 operator.cdi.kubevirt.io: ""
                 prometheus.cdi.kubevirt.io: "true"
         spec:
-            affinity:
-                podAffinity:
-                    preferredDuringSchedulingIgnoredDuringExecution:
-                        - podAffinityTerm:
-                            labelSelector:
-                                matchExpressions:
-                                    - key: cdi.kubevirt.io
-                                      operator: In
-                                      values:
-                                        - cdi-operator
-                            topologyKey: kubernetes.io/hostname
-                          weight: 1
+            affinity: {{ .Values.cdiOperator.affinity | toYaml | nindent 16 }}
             containers:
                 - env: {{ .Values.cdiOperator.env | toYaml | nindent 20 }}
-                  image: quay.io/kubevirt/cdi-operator:v1.63.1
-                  imagePullPolicy: IfNotPresent
+                  image: {{ .Values.cdiOperator.image.repository }}:{{ .Values.cdiOperator.image.tag }}
+                  imagePullPolicy: {{ .Values.cdiOperator.imagePullPolicy }}
                   name: cdi-operator
                   ports:
                     - containerPort: 8443
                       name: metrics
                       protocol: TCP
-                  resources:
-                    requests:
-                        cpu: 100m
-                        memory: 150Mi
-                  securityContext:
-                    allowPrivilegeEscalation: false
-                    capabilities:
-                        drop:
-                            - ALL
-                    runAsNonRoot: true
-                    seccompProfile:
-                        type: RuntimeDefault
+                  resources: {{ .Values.cdiOperator.resources | toYaml | nindent 20 }}
+                  securityContext: {{ .Values.cdiOperator.securityContext | toYaml | nindent 20 }}
                   terminationMessagePath: /dev/termination-log
                   terminationMessagePolicy: FallbackToLogsOnError
             nodeSelector: {{ .Values.cdiOperator.nodeSelector | toYaml | nindent 16 }}
-            securityContext:
-                runAsNonRoot: true
+            securityContext: {{ .Values.cdiOperator.podSecurityContext | toYaml | nindent 16 }}
             serviceAccountName: cdi-operator
             tolerations: {{ .Values.cdiOperator.tolerations | toYaml | nindent 16 }}

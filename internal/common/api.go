@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	ValuesRegex                 = `\{\{\s*\.Values\.([^\s\}]+).*\}\}`
+	ValuesRegex                 = `\{\{\s*\.Values\.([^\s\}]+).*?\}\}`
 	Kind                        = "kind"
 	ModeUpdate  ModeOfOperation = "update"
 	ModePublish ModeOfOperation = "publish"
@@ -63,10 +63,10 @@ type GithubRelease struct {
 }
 
 type Modification struct {
-	Expression     string `koanf:"expression"`     // yq expression to modify manifest
-	ValuesSelector string `koanf:"valuesSelector"` // cuts selected section and moves to Values
-	Kind           string `koanf:"kind"`           // if set, apply modification only to resources of this kind
-	Reject         string `koanf:"reject"`         // don't apply for these
+	Expression     string   `koanf:"expression"`     // yq expression to modify manifest
+	ValuesSelector []string `koanf:"valuesSelector"` // cuts selected section and moves to Values
+	Kind           string   `koanf:"kind"`           // if set, apply modification only to resources of this kind
+	Reject         string   `koanf:"reject"`         // don't apply for these
 }
 
 type Manifests struct {
@@ -115,7 +115,7 @@ func NewManifests(assetsData *map[string][]byte, version *semver.Version, appVer
 func NewYqModification(expression string) *Modification {
 	return &Modification{
 		Expression:     expression,
-		ValuesSelector: "",
+		ValuesSelector: []string{},
 		Kind:           "",
 	}
 }

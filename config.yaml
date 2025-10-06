@@ -29,22 +29,25 @@ githubReleases:
       - namespace
       - namespaces
     modifications:
-      #      - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}"' # not (yet?) extracting to different name
       - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
         reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
       - expression: '(.subjects[] | select(.name == "kubevirt-operator") .namespace) = "{{ .Release.Namespace }}"'
         kind: "RoleBinding|ClusterRoleBinding"
       - expression: '.spec.certificateRotateStrategy |= "{{ .Values.kubevirt.certificateRotateStrategy | toYaml | nindent 8 }}"'
-        valuesSelector: ".spec.certificateRotateStrategy"
+        valuesSelector:
+          - ".spec.certificateRotateStrategy"
         kind: KubeVirt
       - expression: '.spec.configuration |= "{{ .Values.kubevirt.configuration | toYaml | nindent 8 }}"'
-        valuesSelector: ".spec.configuration"
+        valuesSelector:
+          - ".spec.configuration"
         kind: KubeVirt
       - expression: '.spec.customizeComponents |= "{{ .Values.kubevirt.customizeComponents | toYaml | nindent 8 }}"'
-        valuesSelector: ".spec.customizeComponents"
+        valuesSelector:
+          - ".spec.customizeComponents"
         kind: KubeVirt
       - expression: '.spec.imagePullPolicy |= "{{ .Values.kubevirt.imagePullPolicy }}"'
-        valuesSelector: ".spec.imagePullPolicy"
+        valuesSelector:
+          - ".spec.imagePullPolicy"
         kind: KubeVirt
       - expression: '.spec.imagePullSecrets |= "{{ .Values.kubevirt.imagePullSecrets | toYaml | nindent 8 }}"'
         kind: KubeVirt
@@ -72,23 +75,70 @@ githubReleases:
         kind: KubeVirt
       - expression: '.spec.workloadUpdateStrategy |= "{{ .Values.kubevirt.workloadUpdateStrategy | toYaml | nindent 8 }}"'
         kind: KubeVirt
-        valuesSelector: ".spec.workloadUpdateStrategy"
+        valuesSelector:
+          - ".spec.workloadUpdateStrategy"
       - expression: '.spec.workloads |= "{{ .Values.kubevirt.workloads | toYaml | nindent 8 }}"'
         kind: KubeVirt
       - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
-        valuesSelector: ".metadata.annotations"
+        valuesSelector:
+          - ".metadata.annotations"
         kind: CustomResourceDefinition
       - expression: '.spec.replicas |= "{{ .Values.kubevirtOperator.replicas }}"'
-        valuesSelector: ".spec.replicas"
+        valuesSelector:
+          - ".spec.replicas"
         kind: Deployment
       - expression: '.spec.template.spec.containers[0].env |= "{{ .Values.kubevirtOperator.env | toYaml | nindent 20 }}"'
-        valuesSelector: ".spec.template.spec.containers[0].env"
+        valuesSelector:
+          - ".spec.template.spec.containers[0].env"
         kind: Deployment
       - expression: '.spec.template.spec.nodeSelector |= "{{ .Values.kubevirtOperator.nodeSelector | toYaml | nindent 16 }}"'
-        valuesSelector: ".spec.template.spec.nodeSelector"
+        valuesSelector:
+          - ".spec.template.spec.nodeSelector"
         kind: Deployment
       - expression: '.spec.template.spec.tolerations |= "{{ .Values.kubevirtOperator.tolerations | toYaml | nindent 16 }}"'
-        valuesSelector: ".spec.template.spec.tolerations"
+        valuesSelector:
+          - ".spec.template.spec.tolerations"
+        kind: Deployment
+      - expression: '.spec.template.spec.affinity |= "{{ .Values.kubevirtOperator.affinity | toYaml | nindent 16 }}"'
+        valuesSelector:
+          - ".spec.template.spec.affinity"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].resources |= "{{ .Values.kubevirtOperator.resources | toYaml | nindent 20 }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].resources"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].image |= "{{ .Values.kubevirtOperator.image.repository }}:{{ .Values.kubevirtOperator.image.tag }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].image | split(\":\") | .[0]"
+          - ".spec.template.spec.containers[0].image | split(\":\") | .[1]"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].args |= "{{ .Values.kubevirtOperator.args | toYaml | nindent 20 }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].args"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].imagePullPolicy |= "{{ .Values.kubevirtOperator.imagePullPolicy }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].imagePullPolicy"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].command |= "{{ .Values.kubevirtOperator.command | toYaml | nindent 20 }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].command"
+        kind: Deployment
+      - expression: '.spec.template.spec.volumes |= "{{ .Values.kubevirtOperator.volumes | toYaml | nindent 16 }}"'
+        valuesSelector:
+          - ".spec.template.spec.volumes"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].volumeMounts |= "{{ .Values.kubevirtOperator.volumeMounts | toYaml | nindent 20 }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].volumeMounts"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].securityContext |= "{{ .Values.kubevirtOperator.securityContext | toYaml | nindent 20 }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].securityContext"
+        kind: Deployment
+      - expression: '.spec.template.spec.securityContext |= "{{ .Values.kubevirtOperator.podSecurityContext | toYaml | nindent 16 }}"'
+        valuesSelector:
+          - ".spec.template.spec.securityContext"
         kind: Deployment
     addValues:
       kubevirt:
@@ -118,7 +168,6 @@ githubReleases:
       - namespace
       - namespaces
     modifications:
-      #      - expression: '.metadata.name |= "{{ include \"cdi.fullname\" . }}"' # not (yet?) extracting to different name
       - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
         reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
       - expression: '(.subjects[] | select(.name == "cdi-operator") .namespace) = "{{ .Release.Namespace }}"'
@@ -128,37 +177,71 @@ githubReleases:
       - expression: '.spec.cloneStrategyOverride |= "{{ .Values.cdi.cloneStrategyOverride }}"'
         kind: CDI
       - expression: '.spec.config |= "{{ .Values.cdi.config | toYaml | nindent 8 }}"'
-        valuesSelector: ".spec.config"
+        valuesSelector:
+          - ".spec.config"
         kind: CDI
       - expression: '.spec.customizeComponents |= "{{ .Values.cdi.customizeComponents | toYaml | nindent 8 }}"'
         kind: CDI
       - expression: '.spec.imagePullPolicy |= "{{ .Values.cdi.imagePullPolicy }}"'
-        valuesSelector: ".spec.imagePullPolicy"
+        valuesSelector:
+          - ".spec.imagePullPolicy"
         kind: CDI
       - expression: '.spec.infra |= "{{ .Values.cdi.infra | toYaml | nindent 8 }}"'
-        valuesSelector: ".spec.infra"
+        valuesSelector:
+          - ".spec.infra"
         kind: CDI
       - expression: '.spec.priorityClass |= "{{ .Values.cdi.priorityClass }}"'
         kind: CDI
       - expression: '.spec.uninstallStrategy |= "{{ .Values.cdi.uninstallStrategy }}"'
         kind: CDI
       - expression: '.spec.workload |= "{{ .Values.cdi.workload | toYaml | nindent 8 }}"'
-        valuesSelector: ".spec.workload"
+        valuesSelector:
+          - ".spec.workload"
         kind: CDI
       - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
-        valuesSelector: ".metadata.annotations"
+        valuesSelector:
+          - ".metadata.annotations"
         kind: CustomResourceDefinition
       - expression: '.spec.replicas |= "{{ .Values.cdiOperator.replicas }}"'
-        valuesSelector: ".spec.replicas"
+        valuesSelector:
+          - ".spec.replicas"
         kind: Deployment
       - expression: '.spec.template.spec.containers[0].env |= "{{ .Values.cdiOperator.env | toYaml | nindent 20 }}"'
-        valuesSelector: ".spec.template.spec.containers[0].env"
+        valuesSelector:
+          - ".spec.template.spec.containers[0].env"
         kind: Deployment
       - expression: '.spec.template.spec.nodeSelector |= "{{ .Values.cdiOperator.nodeSelector | toYaml | nindent 16 }}"'
-        valuesSelector: ".spec.template.spec.nodeSelector"
+        valuesSelector:
+          - ".spec.template.spec.nodeSelector"
         kind: Deployment
       - expression: '.spec.template.spec.tolerations |= "{{ .Values.cdiOperator.tolerations | toYaml | nindent 16 }}"'
-        valuesSelector: ".spec.template.spec.tolerations"
+        valuesSelector:
+          - ".spec.template.spec.tolerations"
+        kind: Deployment
+      - expression: '.spec.template.spec.affinity |= "{{ .Values.cdiOperator.affinity | toYaml | nindent 16 }}"'
+        valuesSelector:
+          - ".spec.template.spec.affinity"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].resources |= "{{ .Values.cdiOperator.resources | toYaml | nindent 20 }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].resources"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].securityContext |= "{{ .Values.cdiOperator.securityContext | toYaml | nindent 20 }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].securityContext"
+        kind: Deployment
+      - expression: '.spec.template.spec.securityContext |= "{{ .Values.cdiOperator.podSecurityContext | toYaml | nindent 16 }}"'
+        valuesSelector:
+          - ".spec.template.spec.securityContext"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].image |= "{{ .Values.cdiOperator.image.repository }}:{{ .Values.cdiOperator.image.tag }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].image | split(\":\") | .[0]"
+          - ".spec.template.spec.containers[0].image | split(\":\") | .[1]"
+        kind: Deployment
+      - expression: '.spec.template.spec.containers[0].imagePullPolicy |= "{{ .Values.cdiOperator.imagePullPolicy }}"'
+        valuesSelector:
+          - ".spec.template.spec.containers[0].imagePullPolicy"
         kind: Deployment
     addCrdValues:
       annotations:
