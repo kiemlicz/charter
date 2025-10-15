@@ -15,28 +15,28 @@ import (
 )
 
 var (
-	ChartModifier = NewModifier()
+	ChartModifier = newModifier()
 )
 
-type Modifier struct {
+type modifier struct {
 	encoder   yqlib.Encoder
 	decoder   yqlib.Decoder
 	evaluator yqlib.Evaluator
 }
 
-func NewModifier() *Modifier {
+func newModifier() *modifier {
 	encoder := yqlib.NewYamlEncoder(yqlib.NewDefaultYamlPreferences())
 	decoder := yqlib.NewYamlDecoder(yqlib.NewDefaultYamlPreferences())
 	evaluator := yqlib.NewAllAtOnceEvaluator()
 
-	return &Modifier{
+	return &modifier{
 		encoder:   encoder,
 		decoder:   decoder,
 		evaluator: evaluator,
 	}
 }
 
-func (m *Modifier) FilterManifests(manifests *common.Manifests, denyKindFilter []string) *common.Manifests {
+func (m *modifier) FilterManifests(manifests *common.Manifests, denyKindFilter []string) *common.Manifests {
 	filteredManifests := make([]map[string]any, 0)
 	deniedKinds := make(map[string]bool)
 	for _, filter := range denyKindFilter {
@@ -62,7 +62,7 @@ func (m *Modifier) FilterManifests(manifests *common.Manifests, denyKindFilter [
 
 // ParametrizeManifests applies modifications to manifests
 // returns modified manifests and extracted values
-func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]common.Modification) (*common.Manifests, error) {
+func (m *modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]common.Modification) (*common.Manifests, error) {
 	modifiedManifests := make([]map[string]any, 0)
 	modifiedCrds := make([]map[string]any, 0)
 	extractedValues := manifests.Values
@@ -96,7 +96,7 @@ func (m *Modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]com
 	}, nil
 }
 
-func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.Modification) (*map[string]any, *map[string]any, error) {
+func (m *modifier) applyModifications(manifest *map[string]any, mods *[]common.Modification) (*map[string]any, *map[string]any, error) {
 	common.Log.Debugf("Applying %d modifications to manifest of kind: %v", len(*mods), (*manifest)[common.Kind])
 	common.Log.Tracef("Original manifest:\n%+v", manifest)
 
@@ -184,7 +184,7 @@ func (m *Modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 	return &modifiedManifest, &extractedValues, nil
 }
 
-func (m *Modifier) wrapResult(result *list.List, underPath string) (*map[string]any, error) {
+func (m *modifier) wrapResult(result *list.List, underPath string) (*map[string]any, error) {
 	if result.Len() != 1 {
 		return nil, fmt.Errorf("yq result does not contain exactly one element")
 	}
@@ -215,11 +215,11 @@ func (m *Modifier) wrapResult(result *list.List, underPath string) (*map[string]
 }
 
 // helper: generic unmarshal of a single yq result element into interface{}
-func (m *Modifier) resultToAny(result *list.List) (any, error) {
+func (m *modifier) resultToAny(result *list.List) (any, error) {
 	return decodeResult[any](m, result)
 }
 
-func (m *Modifier) resultToMap(result *list.List) (*map[string]any, error) {
+func (m *modifier) resultToMap(result *list.List) (*map[string]any, error) {
 	return decodeResult[*map[string]any](m, result)
 }
 
@@ -257,7 +257,7 @@ func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, 
 }
 
 // generic decoder
-func decodeResult[T any](m *Modifier, result *list.List) (T, error) {
+func decodeResult[T any](m *modifier, result *list.List) (T, error) {
 	var zero T
 	out := new(bytes.Buffer)
 	printer := yqlib.NewPrinter(m.encoder, yqlib.NewSinglePrinterWriter(out))
