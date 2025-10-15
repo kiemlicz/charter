@@ -3,11 +3,13 @@ package packager
 import (
 	"bytes"
 	"container/list"
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/kiemlicz/charter/internal/common"
+	ghup "github.com/kiemlicz/charter/internal/updater/github"
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"gopkg.in/yaml.v3"
 )
@@ -219,6 +221,39 @@ func (m *Modifier) resultToAny(result *list.List) (any, error) {
 
 func (m *Modifier) resultToMap(result *list.List) (*map[string]any, error) {
 	return decodeResult[*map[string]any](m, result)
+}
+
+func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*common.Manifests, error) {
+	common.Log.Infof("Updating release: %s", releaseConfig.Repo)
+
+	currentVersion, currentAppVersion, err := PeekVersions(helmSettings.SrcDir, releaseConfig.ChartName)
+	if err != nil {
+		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.ChartName, err)
+		return nil, err
+	}
+	manifests, err := ghup.FetchManifests(ctx, releaseConfig, currentVersion, currentAppVersion)
+	if err != nil {
+		return nil, err
+	}
+	if manifests == nil {
+		common.Log.Infof("No updates for release %s, skipping", releaseConfig.Repo)
+		return nil, nil
+	}
+
+	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.ChartName, len(manifests.Manifests))
+
+	modifiedManifests, err := ChartModifier.ParametrizeManifests(
+		ChartModifier.FilterManifests(
+			manifests,
+			releaseConfig.Drop,
+		),
+		&releaseConfig.Modifications,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return modifiedManifests, nil
 }
 
 // generic decoder

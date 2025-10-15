@@ -50,7 +50,7 @@ func UpdateMode(config *common.Config) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			modifiedManifests, err := ProcessManifests(ctx, &release, &config.Helm)
+			modifiedManifests, err := packager.ProcessManifests(ctx, &release, &config.Helm)
 			if err != nil {
 				common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
 				createdCharts <- nil
@@ -142,37 +142,4 @@ func PublishMode(config *common.Config) error {
 		}
 	}
 	return nil
-}
-
-func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*common.Manifests, error) {
-	common.Log.Infof("Updating release: %s", releaseConfig.Repo)
-
-	currentVersion, currentAppVersion, err := packager.PeekVersions(helmSettings.SrcDir, releaseConfig.ChartName)
-	if err != nil {
-		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.ChartName, err)
-		return nil, err
-	}
-	manifests, err := ghup.FetchManifests(ctx, releaseConfig, currentVersion, currentAppVersion)
-	if err != nil {
-		return nil, err
-	}
-	if manifests == nil {
-		common.Log.Infof("No updates for release %s, skipping", releaseConfig.Repo)
-		return nil, nil
-	}
-
-	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.ChartName, len(manifests.Manifests))
-
-	modifiedManifests, err := packager.ChartModifier.ParametrizeManifests(
-		packager.ChartModifier.FilterManifests(
-			manifests,
-			releaseConfig.Drop,
-		),
-		&releaseConfig.Modifications,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return modifiedManifests, nil
 }
