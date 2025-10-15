@@ -158,6 +158,10 @@ githubReleases:
     addCrdValues:
       annotations:
         "helm.sh/resource-policy": "keep"
+    templates: # ????
+      - kind: .*
+        find: ".metadata.labels"
+        add: "{{- include \"kubevirt.labels\" . | nindent 4 }}"
   - owner: "kubevirt"
     repo: "containerized-data-importer"
     assets:

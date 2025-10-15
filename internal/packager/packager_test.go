@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// BeforeAll-a-like
 func TestMain(m *testing.M) {
 	common.Setup("debug")
 	exitVal := m.Run()
@@ -37,7 +38,7 @@ func TestParseAssets(t *testing.T) {
 	}
 }
 
-func TestParametrizeExtractsValues(t *testing.T) {
+func TestValuesExtraction(t *testing.T) {
 	testManifests, _ := common.NewManifests(readTestData(t), mustSemver("0.0.1"), "0.0.1", new(map[string]any), new(map[string]any))
 	testCases := map[string]struct {
 		modifications   []common.Modification
@@ -104,20 +105,20 @@ func TestParametrizeExtractsValues(t *testing.T) {
 
 			//then
 			if err != nil {
-				t.Errorf("TestParametrizeExtractsValues() error = %v", err)
+				t.Errorf("TestValuesExtraction() error = %v", err)
 				return
 			}
 
 			for _, m := range (*modifiedManifests).Manifests {
 				if !mapContains(&m, &tc.expectedChanges, false) {
-					t.Errorf("TestParametrizeExtractsValues() modified manifest:\n%v, but wanted:\n%v", mustYaml(m), mustYaml(tc.expectedChanges))
+					t.Errorf("TestValuesExtraction() modified manifest:\n%v, but wanted:\n%v", mustYaml(m), mustYaml(tc.expectedChanges))
 					return
 				}
 			}
 			common.Log.Infof("Extracted Values:\n%v\n", mustYaml(modifiedManifests.Values))
 
 			if !mapContains(&modifiedManifests.Values, &tc.expectedValues, true) {
-				t.Errorf("TestParametrizeExtractsValues() extractedValues:\n%v, but wanted:\n%v", modifiedManifests.Values, tc.expectedValues)
+				t.Errorf("TestValuesExtraction() extractedValues:\n%v, but wanted:\n%v", modifiedManifests.Values, tc.expectedValues)
 				return
 			}
 		})

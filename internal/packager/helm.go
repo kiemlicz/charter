@@ -77,6 +77,14 @@ func updateChartManifest(ch *chart.Chart, version *semver.Version, appVersion st
 	return nil
 }
 
+func insertHelpers(ch *chart.Chart) error {
+	for _, template := range ch.Templates {
+		ChartModifier.InsertHelpers(template)
+		// WIP
+	}
+	return nil
+}
+
 func save(chartFullPath string, ch *chart.Chart, extraValues *map[string]any) error {
 	err := clearTemplates(chartFullPath)
 	if err != nil {
@@ -325,6 +333,11 @@ func NewHelmChart(chartName string, m *common.Manifests, crds bool, helmSettings
 	}
 
 	err = updateChartManifest(chartObj, &version, appVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	err = insertHelpers(chartObj)
 	if err != nil {
 		return nil, err
 	}

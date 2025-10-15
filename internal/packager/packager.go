@@ -12,6 +12,7 @@ import (
 	ghup "github.com/kiemlicz/charter/internal/updater/github"
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"gopkg.in/yaml.v3"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 var (
@@ -34,6 +35,20 @@ func newModifier() *modifier {
 		decoder:   decoder,
 		evaluator: evaluator,
 	}
+}
+
+func (m *modifier) decode(yamlBytes *[]byte) (*yqlib.CandidateNode, error) {
+	err := m.decoder.Init(bytes.NewReader(*yamlBytes))
+	if err != nil {
+		common.Log.Errorf("Failed to initialize decoder for manifest: %v", err)
+		return nil, err
+	}
+	candidNode, err := m.decoder.Decode()
+	if err != nil {
+		common.Log.Errorf("Failed to decode manifest to yaml node: %v", err)
+		return nil, err
+	}
+	return candidNode, nil
 }
 
 func (m *modifier) FilterManifests(manifests *common.Manifests, denyKindFilter []string) *common.Manifests {
@@ -69,11 +84,11 @@ func (m *modifier) ParametrizeManifests(manifests *common.Manifests, mods *[]com
 	extractedCrdValues := manifests.CrdsValues
 
 	for _, manifest := range manifests.Manifests {
-		m, v, err := m.applyModifications(&manifest, mods)
+		modifiedManifest, v, err := m.applyModifications(&manifest, mods)
 		if err != nil {
 			return nil, err //not continuing on error
 		}
-		modifiedManifests = append(modifiedManifests, *m)
+		modifiedManifests = append(modifiedManifests, *modifiedManifest)
 		extractedValues = *common.DeepMerge(&extractedValues, v)
 	}
 
@@ -108,16 +123,7 @@ func (m *modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 		common.Log.Errorf("Failed to marshal manifest to YAML during applying modifications: %v", err)
 		return nil, nil, err
 	}
-	err = m.decoder.Init(bytes.NewReader(yamlBytes))
-	if err != nil {
-		common.Log.Errorf("Failed to initialize decoder for manifest: %v", err)
-		return nil, nil, err
-	}
-	candidNode, err := m.decoder.Decode()
-	if err != nil {
-		common.Log.Errorf("Failed to decode manifest to yaml node: %v", err)
-		return nil, nil, err
-	}
+	candidNode, err := m.decode(&yamlBytes)
 
 	for _, mod := range *mods {
 		if mod.Kind != "" {
@@ -221,6 +227,15 @@ func (m *modifier) resultToAny(result *list.List) (any, error) {
 
 func (m *modifier) resultToMap(result *list.List) (*map[string]any, error) {
 	return decodeResult[*map[string]any](m, result)
+}
+
+func (m *modifier) InsertHelpers(template *chart.File) error {
+	candidNode, err := m.decode(&template.Data)
+	if err != nil {
+		common.Log.Errorf("Failed to decode helpers template: %v", err)
+		return err
+	}
+	//todo cont here
 }
 
 func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*common.Manifests, error) {
