@@ -87,6 +87,10 @@ func SetupConfig() (*Config, error) {
 		}
 	}
 
+	if config.ModeOfOperation == "" {
+		log.Fatalf("No operation specified, use --mode=publish or --mode=update")
+	}
+
 	return &config, nil
 }
 

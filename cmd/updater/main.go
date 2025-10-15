@@ -21,13 +21,7 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 		return
 	}
-
 	common.Setup(config.Log.Level)
-
-	if config.ModeOfOperation == "" {
-		common.Log.Info("No operation specified, use --mode=publish or --mode=update")
-		return
-	}
 
 	if config.ModeOfOperation == common.ModeUpdate {
 		err = UpdateMode(config)
