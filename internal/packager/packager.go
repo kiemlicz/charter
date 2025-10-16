@@ -16,12 +16,16 @@ import (
 )
 
 const (
-	LabelsRegex = `(?m)(^[ \t]*metadata:\s*\n(?:[ \t]+[^\n]*\n)*?)([ \t]+)(labels:)`
+	LabelsRegex                  = `(?m)(^metadata:\s*\n(?:[ \t]+[^\n]*\n)*?)([ \t]+)(labels:)`
+	SpecSelectorMatchLabelsRegex = `(?m)(^spec:\s*\n(?:[ \t]+[^\n]*\n)*?[ \t]+selector:\s*\n(?:[ \t]+[^\n]*\n)*?)([ \t]+)(matchLabels:)`
+	SpecSelectorRegex            = `(?m)(^spec:\s*\n(?:[ \t]+[^\n]*\n)*?)([ \t]+)(selector:)`
 )
 
 var (
-	ChartModifier       = newModifier()
-	LabelsRegexCompiled = regexp.MustCompile(LabelsRegex)
+	ChartModifier                        = newModifier()
+	LabelsRegexCompiled                  = regexp.MustCompile(LabelsRegex)
+	SpecSelectorMatchLabelsRegexCompiled = regexp.MustCompile(SpecSelectorMatchLabelsRegex)
+	SpecSelectorRegexCompiled            = regexp.MustCompile(SpecSelectorRegex)
 )
 
 type modifier struct {
@@ -239,13 +243,20 @@ func (m *modifier) InsertHelpers(chartName string, template *chart.File) error {
 	// todo fix deployment modification spec.template.metadata.labels modified too with wrong template
 	// handle selector labels as this should be the way
 	content := string(template.Data)
-	replaceString := fmt.Sprintf(`${1}${2}${3}
+	kind := strings.TrimSuffix(template.Name, ".yaml")
+	labelsReplaceString := fmt.Sprintf(`${1}${2}${3}
 ${2}    {{- include "%s.labels" . | nindent 8 }}`, chartName)
-	content = LabelsRegexCompiled.ReplaceAllString(content, replaceString)
+	selectorLabelsReplaceString := fmt.Sprintf(`${1}${2}${3}${4}
+${2}    {{- include "%s.selectorLabels" . | nindent 12 }}`, chartName)
+	specSelectorReplaceString := fmt.Sprintf(`${1}${2}${3}
+${2}    {{- include "%s.selectorLabels" . | nindent 8 }}`, chartName)
+	content = LabelsRegexCompiled.ReplaceAllString(content, labelsReplaceString)
+	content = SpecSelectorMatchLabelsRegexCompiled.ReplaceAllString(content, selectorLabelsReplaceString) // possibly limit to controllers/deployments only
+	if kind == "service" {
+		content = SpecSelectorRegexCompiled.ReplaceAllString(content, specSelectorReplaceString)
+	}
 
 	template.Data = []byte(content)
-	//todo test validity
-	// todo watch out for multiple documents in templates
 	return nil
 }
 
