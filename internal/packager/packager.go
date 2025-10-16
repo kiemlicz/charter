@@ -235,8 +235,22 @@ func (m *modifier) InsertHelpers(template *chart.File) error {
 		common.Log.Errorf("Failed to decode helpers template: %v", err)
 		return err
 	}
+	result, err := m.evaluator.EvaluateNodes(".metadata.labels.a = \"a\"", candidNode)
+	if err != nil {
+		common.Log.Errorf("Failed to apply test expression on helpers template: %v", err)
+		return err
+	}
+	//s, err := m.resultToAny(result).(string)
+	//if err != nil {
+	//	common.Log.Errorf("Failed to encode modified helpers template: %v", err)
+	//	return err
+	//}
+	//common.Log.Infof("Result: %s", s)
+	//common.Log.Infof("Inserting helpers template: %v", candidNode)
+
 	//todo cont here, yq can't modify template
 	// todo watch out for multiple documents in templates
+	return nil
 }
 
 func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*common.Manifests, error) {
@@ -275,6 +289,9 @@ func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, 
 // generic decoder
 func decodeResult[T any](m *modifier, result *list.List) (T, error) {
 	var zero T
+	if result == nil {
+		return zero, fmt.Errorf("yq result is nil")
+	}
 	out := new(bytes.Buffer)
 	printer := yqlib.NewPrinter(m.encoder, yqlib.NewSinglePrinterWriter(out))
 	if err := printer.PrintResults(result); err != nil {

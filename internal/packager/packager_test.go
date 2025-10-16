@@ -4,11 +4,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/kiemlicz/charter/internal/common"
 	"gopkg.in/yaml.v3"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 // BeforeAll-a-like
@@ -168,6 +170,35 @@ func TestParametrizeListElement(t *testing.T) {
 		}
 	}
 	t.Errorf("ParametrizeManifests() did not find a matching RoleBinding manifest or did not match expected changes")
+}
+
+func TestInsertHelpers(t *testing.T) {
+	//given
+	name := "clusterrole.yaml"
+	data, err := os.ReadFile(filepath.Join("testdata", "templates", name))
+	if err != nil {
+		t.Fatalf("failed to read file: %v", err)
+	}
+	template := chart.File{
+		Name: name,
+		Data: data,
+	}
+
+	//when
+	err = ChartModifier.InsertHelpers(&template)
+
+	//then
+	if err != nil {
+		t.Fatalf("InsertHelpers() error = %v", err)
+	}
+	templateString := string(template.Data)
+	expectedHelper := `{{- include "cdi.labels" . | nindent 4 }}`
+
+	t.Logf("Modified template:\n%s", templateString)
+
+	if !strings.Contains(templateString, expectedHelper) {
+		t.Errorf("InsertHelpers() template does not contain expected helper: %s", expectedHelper)
+	}
 }
 
 func mapContains(mainMap *map[string]any, subMap *map[string]any, mustExist bool) bool {
