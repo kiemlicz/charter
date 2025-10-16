@@ -337,9 +337,11 @@ func NewHelmChart(chartName string, m *common.Manifests, crds bool, helmSettings
 		return nil, err
 	}
 
-	err = insertHelpers(chartObj)
-	if err != nil {
-		return nil, err
+	if !crds { // no helpers for CRD chart
+		err = insertHelpers(chartObj)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	err = save(chartPath, chartObj, vals)

@@ -192,7 +192,9 @@ func TestInsertHelpers(t *testing.T) {
 		t.Fatalf("InsertHelpers() error = %v", err)
 	}
 	templateString := string(template.Data)
-	expectedHelper := `{{- include "cdi.labels" . | nindent 4 }}`
+	expectedHelper := `{{- include "cdi.labels" . | nindent 8 }}`
+
+	t.Logf("Modified template:\n%s", templateString)
 
 	if !strings.Contains(templateString, expectedHelper) {
 		t.Errorf("InsertHelpers() template: %s, does not contain expected helper: %s", templateString, expectedHelper)

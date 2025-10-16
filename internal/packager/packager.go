@@ -235,9 +235,12 @@ func (m *modifier) resultToMap(result *list.List) (*map[string]any, error) {
 }
 
 func (m *modifier) InsertHelpers(chartName string, template *chart.File) error {
+	//if none match, add `labels` key
+	// todo fix deployment modification spec.template.metadata.labels modified too with wrong template
+	// handle selector labels as this should be the way
 	content := string(template.Data)
 	replaceString := fmt.Sprintf(`${1}${2}${3}
-	${3} {{- include "%s.labels" . | nindent 4 }}`, chartName)
+${2}    {{- include "%s.labels" . | nindent 8 }}`, chartName)
 	content = LabelsRegexCompiled.ReplaceAllString(content, replaceString)
 
 	template.Data = []byte(content)
