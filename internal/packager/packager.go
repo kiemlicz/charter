@@ -15,8 +15,13 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 )
 
+const (
+	LabelsRegex = `(?m)(^[ \t]*metadata:\s*\n(?:[ \t]+[^\n]*\n)*?)([ \t]+)(labels:)`
+)
+
 var (
-	ChartModifier = newModifier()
+	ChartModifier       = newModifier()
+	LabelsRegexCompiled = regexp.MustCompile(LabelsRegex)
 )
 
 type modifier struct {
@@ -229,26 +234,14 @@ func (m *modifier) resultToMap(result *list.List) (*map[string]any, error) {
 	return decodeResult[*map[string]any](m, result)
 }
 
-func (m *modifier) InsertHelpers(template *chart.File) error {
-	candidNode, err := m.decode(&template.Data)
-	if err != nil {
-		common.Log.Errorf("Failed to decode helpers template: %v", err)
-		return err
-	}
-	result, err := m.evaluator.EvaluateNodes(".metadata.labels.a = \"a\"", candidNode)
-	if err != nil {
-		common.Log.Errorf("Failed to apply test expression on helpers template: %v", err)
-		return err
-	}
-	//s, err := m.resultToAny(result).(string)
-	//if err != nil {
-	//	common.Log.Errorf("Failed to encode modified helpers template: %v", err)
-	//	return err
-	//}
-	//common.Log.Infof("Result: %s", s)
-	//common.Log.Infof("Inserting helpers template: %v", candidNode)
+func (m *modifier) InsertHelpers(chartName string, template *chart.File) error {
+	content := string(template.Data)
+	replaceString := fmt.Sprintf(`${1}${2}${3}
+	${3} {{- include "%s.labels" . | nindent 4 }}`, chartName)
+	content = LabelsRegexCompiled.ReplaceAllString(content, replaceString)
 
-	//todo cont here, yq can't modify template
+	template.Data = []byte(content)
+	//todo test validity
 	// todo watch out for multiple documents in templates
 	return nil
 }

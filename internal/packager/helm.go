@@ -79,7 +79,7 @@ func updateChartManifest(ch *chart.Chart, version *semver.Version, appVersion st
 
 func insertHelpers(ch *chart.Chart) error {
 	for _, template := range ch.Templates {
-		ChartModifier.InsertHelpers(template)
+		ChartModifier.InsertHelpers(ch.Name(), template)
 		// WIP
 	}
 	return nil

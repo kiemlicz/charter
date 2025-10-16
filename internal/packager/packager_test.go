@@ -185,7 +185,7 @@ func TestInsertHelpers(t *testing.T) {
 	}
 
 	//when
-	err = ChartModifier.InsertHelpers(&template)
+	err = ChartModifier.InsertHelpers("cdi", &template)
 
 	//then
 	if err != nil {
@@ -194,10 +194,8 @@ func TestInsertHelpers(t *testing.T) {
 	templateString := string(template.Data)
 	expectedHelper := `{{- include "cdi.labels" . | nindent 4 }}`
 
-	t.Logf("Modified template:\n%s", templateString)
-
 	if !strings.Contains(templateString, expectedHelper) {
-		t.Errorf("InsertHelpers() template does not contain expected helper: %s", expectedHelper)
+		t.Errorf("InsertHelpers() template: %s, does not contain expected helper: %s", templateString, expectedHelper)
 	}
 }
 
