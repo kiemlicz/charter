@@ -5,16 +5,15 @@ import (
 	"container/list"
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/kiemlicz/charter/internal/common"
 	ghup "github.com/kiemlicz/charter/internal/updater/github"
 	"github.com/mikefarah/yq/v4/pkg/yqlib"
 	"gopkg.in/yaml.v3"
-	"helm.sh/helm/v3/pkg/chart"
 )
 
+// remove below
 const (
 	LabelsRegex                  = `(?m)(^metadata:\s*\n(?:[ \t]+[^\n]*\n)*?)([ \t]+)(labels:)`
 	SpecSelectorMatchLabelsRegex = `(?m)(^spec:\s*\n(?:[ \t]+[^\n]*\n)*?[ \t]+selector:\s*\n(?:[ \t]+[^\n]*\n)*?)([ \t]+)(matchLabels:)`
@@ -22,10 +21,7 @@ const (
 )
 
 var (
-	ChartModifier                        = newModifier()
-	LabelsRegexCompiled                  = regexp.MustCompile(LabelsRegex)
-	SpecSelectorMatchLabelsRegexCompiled = regexp.MustCompile(SpecSelectorMatchLabelsRegex)
-	SpecSelectorRegexCompiled            = regexp.MustCompile(SpecSelectorRegex)
+	ChartModifier = newModifier()
 )
 
 type modifier struct {
@@ -68,7 +64,7 @@ func (m *modifier) FilterManifests(manifests *common.Manifests, denyKindFilter [
 	}
 
 	for _, m := range (*manifests).Manifests {
-		if kind, ok := m["kind"].(string); ok && deniedKinds[strings.ToLower(kind)] {
+		if kind, ok := m[common.Kind].(string); ok && deniedKinds[strings.ToLower(kind)] {
 			continue
 		}
 		filteredManifests = append(filteredManifests, m)
@@ -135,26 +131,29 @@ func (m *modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 	candidNode, err := m.decode(&yamlBytes)
 
 	for _, mod := range *mods {
+		if mod.TextRegex != "" {
+			// this is a text replacement modification after yq operations
+			continue
+		}
+
 		if mod.Kind != "" {
-			rc, err := regexp.Compile(mod.Kind)
+			kind, ok := (*manifest)[common.Kind].(string)
+			kindMatches, err := common.Matches(mod.Kind, kind)
 			if err != nil {
-				common.Log.Errorf("Failed to compile kind regex '%s': %v", mod.Kind, err)
 				return nil, nil, err
 			}
-			kind, ok := (*manifest)[common.Kind].(string)
-			if !ok || !rc.MatchString(kind) {
+			if !ok || !kindMatches {
 				continue
 			}
 		}
 
 		if mod.Reject != "" {
 			kind, ok := (*manifest)[common.Kind].(string)
-			rc, err := regexp.Compile(mod.Reject)
+			kindMatches, err := common.Matches(mod.Reject, kind)
 			if err != nil {
-				common.Log.Errorf("Failed to compile reject regex '%s': %v", mod.Kind, err)
 				return nil, nil, err
 			}
-			if ok && rc.MatchString(kind) {
+			if ok && kindMatches {
 				common.Log.Debugf("Omitting manifest of kind '%s' due to reject rule", kind)
 				continue
 			}
@@ -236,28 +235,6 @@ func (m *modifier) resultToAny(result *list.List) (any, error) {
 
 func (m *modifier) resultToMap(result *list.List) (*map[string]any, error) {
 	return decodeResult[*map[string]any](m, result)
-}
-
-func (m *modifier) InsertHelpers(chartName string, template *chart.File) error {
-	//if none match, add `labels` key
-	// todo fix deployment modification spec.template.metadata.labels modified too with wrong template
-	// handle selector labels as this should be the way
-	content := string(template.Data)
-	kind := strings.TrimSuffix(template.Name, ".yaml")
-	labelsReplaceString := fmt.Sprintf(`${1}${2}${3}
-${2}    {{- include "%s.labels" . | nindent 8 }}`, chartName)
-	selectorLabelsReplaceString := fmt.Sprintf(`${1}${2}${3}${4}
-${2}    {{- include "%s.selectorLabels" . | nindent 12 }}`, chartName)
-	specSelectorReplaceString := fmt.Sprintf(`${1}${2}${3}
-${2}    {{- include "%s.selectorLabels" . | nindent 8 }}`, chartName)
-	content = LabelsRegexCompiled.ReplaceAllString(content, labelsReplaceString)
-	content = SpecSelectorMatchLabelsRegexCompiled.ReplaceAllString(content, selectorLabelsReplaceString) // possibly limit to controllers/deployments only
-	if kind == "service" {
-		content = SpecSelectorRegexCompiled.ReplaceAllString(content, specSelectorReplaceString)
-	}
-
-	template.Data = []byte(content)
-	return nil
 }
 
 func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*common.Manifests, error) {

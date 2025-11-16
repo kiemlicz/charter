@@ -1,13 +1,13 @@
 package packager
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	"github.com/Masterminds/semver/v3"
 	"github.com/kiemlicz/charter/internal/common"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
@@ -27,62 +27,6 @@ type HelmizedManifests struct {
 
 func (packaged *HelmizedManifests) AppVersion() string {
 	return packaged.Chart.Metadata.AppVersion
-}
-
-func createTemplates(ch *chart.Chart, newManifests *[]map[string]any) error {
-	common.Log.Debugf("Updating: %d Helm Chart manifests in: %s", len(*newManifests), ch.Metadata.Name)
-	templates := make(map[string]*chart.File, len(*newManifests))
-	re := regexp.MustCompile(`'(\{\{.*?\}\})'|"(\{\{.*?\}\})"`)
-
-	for i, manifest := range *newManifests {
-		manifestYAML, err := yaml.Marshal(manifest)
-		if err != nil {
-			common.Log.Errorf("Failed to marshal manifest %d: %v", i, err)
-			return err
-		}
-		manifestYAML = re.ReplaceAllFunc(manifestYAML, func(match []byte) []byte {
-			// Remove the surrounding quotes that break the Helm template syntax
-			return match[1 : len(match)-1]
-		})
-		kind, ok := manifest["kind"].(string)
-		if !ok {
-			common.Log.Errorf("Broken manifest: %s", string(manifestYAML))
-			return fmt.Errorf("manifest %d does not have a valid 'kind' field", i)
-		}
-
-		if existingTemplate, exists := templates[kind]; exists {
-			newData := append(existingTemplate.Data, []byte("\n---\n")...)
-			newData = append(newData, manifestYAML...)
-			existingTemplate.Data = newData
-		} else {
-			templates[kind] = &chart.File{
-				Name: fmt.Sprintf("templates/%s.yaml", strings.ToLower(kind)),
-				Data: manifestYAML,
-			}
-		}
-	}
-
-	ch.Templates = make([]*chart.File, 0, len(templates))
-	for _, tmpl := range templates {
-		ch.Templates = append(ch.Templates, tmpl)
-	}
-
-	return nil
-}
-
-func updateChartManifest(ch *chart.Chart, version *semver.Version, appVersion string) error {
-	ch.Metadata.AppVersion = appVersion
-	ch.Metadata.Version = version.String()
-	ch.Metadata.Description = fmt.Sprintf("A Helm Chart for %s", ch.Metadata.Name)
-	return nil
-}
-
-func insertHelpers(ch *chart.Chart) error {
-	for _, template := range ch.Templates {
-		ChartModifier.InsertHelpers(ch.Name(), template)
-		// WIP
-	}
-	return nil
 }
 
 func save(chartFullPath string, ch *chart.Chart, extraValues *map[string]any) error {
@@ -280,24 +224,58 @@ func clearTemplates(path string) error {
 	return nil
 }
 
-func NewHelmCharts(helmSettings *common.HelmSettings, chartName string, m *common.Manifests) (*HelmizedManifests, error) {
+func Prepare(ctx context.Context, release *common.GithubRelease, settings *common.HelmSettings) (*HelmizedManifests, error) {
+	modifiedManifests, err := ProcessManifests(ctx, release, settings)
+	if err != nil {
+		common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
+		return nil, err
+	} else if modifiedManifests == nil {
+		return nil, nil
+	}
+
+	version := modifiedManifests.Version
+	appVersion := modifiedManifests.AppVersion
+
 	var crdsChart *chart.Chart
-	var err error
-	if m.ContainsCrds() {
-		crdsChartName := fmt.Sprintf("%s-crds", chartName)
-		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(m.Crds), crdsChartName)
-		crdsChart, err = NewHelmChart(crdsChartName, m, true, helmSettings)
+	if modifiedManifests.ContainsCrds() {
+		crdsChartName := fmt.Sprintf("%s-crds", release.ChartName)
+		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(modifiedManifests.Crds), crdsChartName)
+		templates, err := createTemplates(&modifiedManifests.Crds, &release.Modifications)
+		if err != nil {
+			return nil, err
+		}
+		crdChartData := common.ChartData{
+			Name:       crdsChartName,
+			Version:    version,
+			AppVersion: appVersion,
+			Templates:  templates,
+			Values:     modifiedManifests.CrdsValues,
+		}
+		crdsChart, err = newHelmChart(&crdChartData, settings)
 		if err != nil {
 			return nil, err
 		}
 	}
-	mainChart, err := NewHelmChart(chartName, m, false, helmSettings)
+
+	templates, err := createTemplates(&modifiedManifests.Manifests, &release.Modifications)
+	if err != nil {
+		return nil, err
+	}
+	chartData := common.ChartData{
+		Name:       release.ChartName,
+		Version:    version,
+		AppVersion: appVersion,
+		Templates:  templates,
+		Values:     modifiedManifests.Values,
+	}
+
+	mainChart, err := newHelmChart(&chartData, settings)
 	if err != nil {
 		return nil, err
 	}
 
 	createdChart := &HelmizedManifests{
-		Path:     helmSettings.SrcDir,
+		Path:     settings.SrcDir,
 		Chart:    mainChart,
 		CrdChart: crdsChart,
 	}
@@ -305,15 +283,80 @@ func NewHelmCharts(helmSettings *common.HelmSettings, chartName string, m *commo
 	return createdChart, nil
 }
 
-func NewHelmChart(chartName string, m *common.Manifests, crds bool, helmSettings *common.HelmSettings) (*chart.Chart, error) {
-	version := m.Version
-	appVersion := m.AppVersion
-	vals := &m.Values
-	templates := &m.Manifests
-	if crds {
-		templates = &m.Crds
-		vals = &m.CrdsValues
+func createTemplates(manifests *[]map[string]any, modification *[]common.Modification) ([]*chart.File, error) {
+	kindToFile, err := materializeManifests(manifests)
+	if err != nil {
+		return nil, err
 	}
+	for kind, file := range kindToFile {
+		err = insertHelpers(kind, file, modification)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	templates := make([]*chart.File, 0, len(kindToFile))
+	for _, tmpl := range templates {
+		templates = append(templates, tmpl)
+	}
+
+	return templates, nil
+}
+
+func insertHelpers(kind string, template *chart.File, mods *[]common.Modification) error {
+	//if none match, add `labels` key
+	// todo fix deployment modification spec.template.metadata.labels modified too with wrong template
+	// handle selector labels as this should be the way
+	content := string(template.Data) // ???
+
+	//	labelsReplaceString := fmt.Sprintf(`${1}${2}${3}
+	//${2}    {{- include "%s.labels" . | nindent 8 }}`, chartName)
+	//	selectorLabelsReplaceString := fmt.Sprintf(`${1}${2}${3}${4}
+	//${2}    {{- include "%s.selectorLabels" . | nindent 12 }}`, chartName)
+	//	specSelectorReplaceString := fmt.Sprintf(`${1}${2}${3}
+	//${2}    {{- include "%s.selectorLabels" . | nindent 8 }}`, chartName)
+	//	content = LabelsRegexCompiled.ReplaceAllString(content, labelsReplaceString)
+	//	content = SpecSelectorMatchLabelsRegexCompiled.ReplaceAllString(content, selectorLabelsReplaceString) // possibly limit to controllers/deployments only
+	//	if kind == "service" {
+	//		content = SpecSelectorRegexCompiled.ReplaceAllString(content, specSelectorReplaceString)
+	//	}
+
+	for _, mod := range *mods {
+		if mod.TextRegex == "" {
+			continue
+		}
+		if mod.Kind != "" {
+			kindMatches, err := common.Matches(mod.Kind, kind)
+			if err != nil {
+				return err
+			}
+			if !kindMatches {
+				continue
+			}
+		}
+		if mod.Reject != "" {
+			kindMatches, err := common.Matches(mod.Reject, kind)
+			if err != nil {
+				return err
+			}
+			if kindMatches {
+				continue
+			}
+		}
+		textRegex := regexp.MustCompile(mod.TextRegex)
+		content = textRegex.ReplaceAllString(content, mod.Expression)
+	}
+
+	template.Data = []byte(content)
+	return nil
+}
+
+func newHelmChart(chartData *common.ChartData, helmSettings *common.HelmSettings) (*chart.Chart, error) {
+	chartName := chartData.Name
+	version := chartData.Version
+	appVersion := chartData.AppVersion
+	vals := chartData.Values
+	templates := chartData.Templates
 
 	chartPath, err := chartutil.Create(chartName, helmSettings.SrcDir) //overwrites
 	if err != nil {
@@ -327,24 +370,15 @@ func NewHelmChart(chartName string, m *common.Manifests, crds bool, helmSettings
 		return nil, err
 	}
 
-	err = createTemplates(chartObj, templates)
-	if err != nil {
-		return nil, err
+	chartObj.Metadata.AppVersion = appVersion
+	chartObj.Metadata.Version = version.String()
+	chartObj.Metadata.Description = fmt.Sprintf("A Helm Chart for %s", chartObj.Metadata.Name)
+	chartObj.Templates = make([]*chart.File, 0, len(templates))
+	for _, tmpl := range templates {
+		chartObj.Templates = append(chartObj.Templates, tmpl)
 	}
 
-	err = updateChartManifest(chartObj, &version, appVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	if !crds { // no helpers for CRD chart
-		err = insertHelpers(chartObj)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	err = save(chartPath, chartObj, vals)
+	err = save(chartPath, chartObj, &vals)
 	if err != nil {
 		return nil, err
 	}
@@ -365,4 +399,39 @@ func PeekVersions(chartDir, chartName string) (string, string, error) {
 		return "", "", err
 	}
 	return chartObj.Metadata.Version, chartObj.AppVersion(), nil
+}
+
+func materializeManifests(newManifests *[]map[string]any) (map[string]*chart.File, error) {
+	templates := make(map[string]*chart.File, len(*newManifests))
+	re := regexp.MustCompile(`'(\{\{.*?\}\})'|"(\{\{.*?\}\})"`)
+
+	for i, manifest := range *newManifests {
+		manifestYAML, err := yaml.Marshal(manifest)
+		if err != nil {
+			common.Log.Errorf("Failed to marshal manifest %d: %v", i, err)
+			return nil, err
+		}
+		manifestYAML = re.ReplaceAllFunc(manifestYAML, func(match []byte) []byte {
+			// Remove the surrounding quotes that break the Helm template syntax
+			return match[1 : len(match)-1]
+		})
+		kind, ok := manifest[common.Kind].(string)
+		if !ok {
+			common.Log.Errorf("Broken manifest: %s", string(manifestYAML))
+			return nil, fmt.Errorf("manifest %d does not have a valid 'kind' field", i)
+		}
+
+		if existingTemplate, exists := templates[kind]; exists {
+			newData := append(existingTemplate.Data, []byte("\n---\n")...)
+			newData = append(newData, manifestYAML...)
+			existingTemplate.Data = newData
+		} else {
+			templates[kind] = &chart.File{
+				Name: fmt.Sprintf("templates/%s.yaml", strings.ToLower(kind)),
+				Data: manifestYAML,
+			}
+		}
+	}
+
+	return templates, nil
 }

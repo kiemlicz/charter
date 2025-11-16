@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 const (
@@ -64,6 +65,7 @@ type GithubRelease struct {
 
 type Modification struct {
 	Expression     string   `koanf:"expression"`     // yq expression to modify manifest
+	TextRegex      string   `koanf:"textRegex"`      // regex to change the keys under path
 	ValuesSelector []string `koanf:"valuesSelector"` // cuts selected section and moves to Values
 	Kind           string   `koanf:"kind"`           // if set, apply modification only to resources of this kind
 	Reject         string   `koanf:"reject"`         // don't apply for these
@@ -115,7 +117,17 @@ func NewManifests(assetsData *map[string][]byte, version *semver.Version, appVer
 func NewYqModification(expression string) *Modification {
 	return &Modification{
 		Expression:     expression,
+		TextRegex:      "",
 		ValuesSelector: []string{},
 		Kind:           "",
+		Reject:         "",
 	}
+}
+
+type ChartData struct {
+	Name       string
+	Version    semver.Version
+	AppVersion string
+	Templates  []*chart.File
+	Values     map[string]any
 }

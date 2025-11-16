@@ -50,20 +50,10 @@ func UpdateMode(config *common.Config) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			modifiedManifests, err := packager.ProcessManifests(ctx, &release, &config.Helm)
+			charts, err := packager.Prepare(ctx, &release, &config.Helm)
 			if err != nil {
 				common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
 				createdCharts <- nil
-				return
-			} else if modifiedManifests == nil {
-				createdCharts <- nil
-				return
-			}
-
-			charts, err := packager.NewHelmCharts(&config.Helm, release.ChartName, modifiedManifests)
-			if err != nil {
-				createdCharts <- nil
-				return
 			}
 			common.Log.Infof("Successfully created Helm chart for release: %s", release.Repo)
 			createdCharts <- charts
@@ -71,7 +61,7 @@ func UpdateMode(config *common.Config) error {
 	}
 
 	wg.Wait()
-	close(createdCharts)
+	close(createdCharts) //so that range below completes
 
 	if config.Offline {
 		common.Log.Infof("Offline mode, skipping git operations")

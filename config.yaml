@@ -247,6 +247,13 @@ githubReleases:
         valuesSelector:
           - ".spec.template.spec.containers[0].imagePullPolicy"
         kind: Deployment
+        # Labels regex TODO metadata.labels extract value, then add in textReplace appropriate value
+      - textRegex: "(?m)(^metadata:\s*\n(?:[ \t]+[^\n]*\n)*?)([ \t]+)(labels:)"
+        expression: |
+          ${1}${2}${3}
+          ${2}    {{- include "%s.labels" . | nindent 8 }}
+#        kind: ""
+        # todo rest of regexes from InsertHelpers
     addCrdValues:
       annotations:
           "helm.sh/resource-policy": "keep"

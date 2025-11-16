@@ -174,6 +174,7 @@ func TestParametrizeListElement(t *testing.T) {
 
 func TestInsertHelpers(t *testing.T) {
 	//given
+	kind := "ClusterRole"
 	name := "clusterrole.yaml"
 	data, err := os.ReadFile(filepath.Join("testdata", "templates", name))
 	if err != nil {
@@ -183,22 +184,36 @@ func TestInsertHelpers(t *testing.T) {
 		Name: name,
 		Data: data,
 	}
+	mods := []common.Modification{
+		{
+			Expression: "${1}${2}${3}\n\t//${2}    {{- include \"%s.labels\" . | nindent 8 }}",
+			TextRegex:  "(?m)(^metadata:\\s*\\n(?:[ \\t]+[^\\n]*\\n)*?)([ \\t]+)(labels:)",
+			Kind:       ".*Role$",
+		},
+	}
 
 	//when
-	err = ChartModifier.InsertHelpers("cdi", &template)
+	err = insertHelpers(kind, &template, &mods)
 
 	//then
 	if err != nil {
-		t.Fatalf("InsertHelpers() error = %v", err)
+		t.Fatalf("insertHelpers() error = %v", err)
 	}
 	templateString := string(template.Data)
-	expectedHelper := `{{- include "cdi.labels" . | nindent 8 }}`
+	expectedHelper := `metadata:
+  labels: {{ include "bla.labels" . | nindent 4 }}
+  name: cdi-operator-cluster
+`
 
 	t.Logf("Modified template:\n%s", templateString)
 
 	if !strings.Contains(templateString, expectedHelper) {
 		t.Errorf("InsertHelpers() template: %s, does not contain expected helper: %s", templateString, expectedHelper)
 	}
+}
+
+func TestPrepare(t *testing.T) { // this is actually an integration test with both parametrize and insertion of templates
+	// TODO implement
 }
 
 func mapContains(mainMap *map[string]any, subMap *map[string]any, mustExist bool) bool {
