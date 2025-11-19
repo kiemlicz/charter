@@ -186,7 +186,7 @@ func TestInsertHelpers(t *testing.T) {
 	}
 	mods := []common.Modification{
 		{
-			Expression: "${1}${2}${3}\n\t//${2}    {{- include \"%s.labels\" . | nindent 8 }}",
+			Expression: "${1}${2}${3} {{- include \"cdi.labels\" . | nindent 8 }}",
 			TextRegex:  "(?m)(^metadata:\\s*\\n(?:[ \\t]+[^\\n]*\\n)*?)([ \\t]+)(labels:)",
 			Kind:       ".*Role$",
 		},
@@ -201,7 +201,8 @@ func TestInsertHelpers(t *testing.T) {
 	}
 	templateString := string(template.Data)
 	expectedHelper := `metadata:
-  labels: {{ include "bla.labels" . | nindent 4 }}
+  labels: {{- include "cdi.labels" . | nindent 8 }}
+    operator.cdi.kubevirt.io: ""
   name: cdi-operator-cluster
 `
 
