@@ -38,7 +38,6 @@ rules:
         - watch
         - patch
         - update
-        - patch
     - apiGroups:
         - ""
       resources:
@@ -335,6 +334,12 @@ rules:
       verbs:
         - create
         - list
+        - get
+    - apiGroups:
+        - ""
+      resources:
+        - nodes
+      verbs:
         - get
     - apiGroups:
         - ""
@@ -792,6 +797,7 @@ rules:
         - virtualmachineinstances/reset
         - virtualmachineinstances/sev/setupsession
         - virtualmachineinstances/sev/injectlaunchsecret
+        - virtualmachineinstances/evacuate/cancel
       verbs:
         - update
     - apiGroups:
@@ -810,6 +816,7 @@ rules:
         - virtualmachines/addvolume
         - virtualmachines/removevolume
         - virtualmachines/memorydump
+        - virtualmachines/evacuate/cancel
       verbs:
         - update
     - apiGroups:
@@ -950,6 +957,7 @@ rules:
         - virtualmachineinstances/reset
         - virtualmachineinstances/sev/setupsession
         - virtualmachineinstances/sev/injectlaunchsecret
+        - virtualmachineinstances/evacuate/cancel
       verbs:
         - update
     - apiGroups:
@@ -968,6 +976,7 @@ rules:
         - virtualmachines/addvolume
         - virtualmachines/removevolume
         - virtualmachines/memorydump
+        - virtualmachines/evacuate/cancel
       verbs:
         - update
     - apiGroups:

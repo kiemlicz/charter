@@ -3,6 +3,7 @@ kubevirt:
     configuration:
         developerConfiguration:
             featureGates: []
+        imagePullPolicy: IfNotPresent
     customizeComponents: {}
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
@@ -21,6 +22,21 @@ kubevirt:
     workloads: {}
 kubevirtOperator:
     affinity:
+        nodeAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+                - preference:
+                    matchExpressions:
+                        - key: node-role.kubernetes.io/worker
+                          operator: DoesNotExist
+                  weight: 100
+            requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: Exists
+                    - matchExpressions:
+                        - key: node-role.kubernetes.io/master
+                          operator: Exists
         podAntiAffinity:
             preferredDuringSchedulingIgnoredDuringExecution:
                 - podAffinityTerm:
@@ -41,16 +57,16 @@ kubevirtOperator:
         - virt-operator
     env:
         - name: VIRT_OPERATOR_IMAGE
-          value: quay.io/kubevirt/virt-operator:v1.6.2
+          value: quay.io/kubevirt/virt-operator:v1.7.0
         - name: WATCH_NAMESPACE
           valueFrom:
             fieldRef:
                 fieldPath: metadata.annotations['olm.targetNamespaces']
         - name: KUBEVIRT_VERSION
-          value: v1.6.2
+          value: v1.7.0
     image:
         repository: quay.io/kubevirt/virt-operator
-        tag: v1.6.2
+        tag: v1.7.0
     imagePullPolicy: IfNotPresent
     nodeSelector:
         kubernetes.io/os: linux
@@ -72,6 +88,12 @@ kubevirtOperator:
             type: RuntimeDefault
     tolerations:
         - key: CriticalAddonsOnly
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
           operator: Exists
     volumeMounts:
         - mountPath: /etc/virt-operator/certificates
