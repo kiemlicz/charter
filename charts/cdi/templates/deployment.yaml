@@ -4,6 +4,7 @@ metadata:
     labels:
         cdi.kubevirt.io: cdi-operator
         name: cdi-operator
+        np.kubevirt.io/allow-access-cluster-services: "true"
         operator.cdi.kubevirt.io: ""
         prometheus.cdi.kubevirt.io: "true"
     name: cdi-operator
@@ -22,6 +23,7 @@ spec:
             labels:
                 cdi.kubevirt.io: cdi-operator
                 name: cdi-operator
+                np.kubevirt.io/allow-access-cluster-services: "true"
                 operator.cdi.kubevirt.io: ""
                 prometheus.cdi.kubevirt.io: "true"
         spec:
@@ -30,11 +32,28 @@ spec:
                 - env: {{ .Values.cdiOperator.env | toYaml | nindent 20 }}
                   image: {{ .Values.cdiOperator.image.repository }}:{{ .Values.cdiOperator.image.tag }}
                   imagePullPolicy: {{ .Values.cdiOperator.imagePullPolicy }}
+                  livenessProbe:
+                    httpGet:
+                        path: /healthz
+                        port: 8444
+                        scheme: HTTP
+                    initialDelaySeconds: 5
+                    timeoutSeconds: 10
                   name: cdi-operator
                   ports:
                     - containerPort: 8443
                       name: metrics
                       protocol: TCP
+                    - containerPort: 8444
+                      name: health
+                      protocol: TCP
+                  readinessProbe:
+                    httpGet:
+                        path: /readyz
+                        port: 8444
+                        scheme: HTTP
+                    initialDelaySeconds: 5
+                    timeoutSeconds: 10
                   resources: {{ .Values.cdiOperator.resources | toYaml | nindent 20 }}
                   securityContext: {{ .Values.cdiOperator.securityContext | toYaml | nindent 20 }}
                   terminationMessagePath: /dev/termination-log
