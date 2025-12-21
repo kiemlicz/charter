@@ -190,6 +190,40 @@ func TestParametrizeListElement(t *testing.T) {
 	t.Errorf("ParametrizeManifests() did not find a matching RoleBinding manifest or did not match expected changes")
 }
 
+func TestMultiValueSelector(t *testing.T) {
+	//given
+	testManifests, _ := getTestManifests(t)
+	mods := []common.Modification{
+		{
+			Expression: ".spec.template.spec.containers[0].image |= \"{{ .Values.kubevirtOperator.deployment.image.repository }}:{{ .Values.kubevirtOperator.deployment.image.tag }}\"",
+			ValuesSelector: []string{
+				".spec.template.spec.containers[0].image | split(\":\") | .[0]",
+				".spec.template.spec.containers[0].image | split(\":\") | .[1]",
+			},
+			Kind: "Deployment",
+		},
+	}
+
+	//when
+	modifiedManifests, err := ChartModifier.ParametrizeManifests(testManifests, &mods)
+
+	//then
+	if err != nil {
+		t.Fatalf("ParametrizeManifests() error = %v", err)
+	}
+
+	imageMap, ok := modifiedManifests.Values["kubevirtOperator"].(map[string]any)["deployment"].(map[string]any)["image"].(map[string]any)
+	if !ok {
+		t.Fatalf("image values not found or of wrong type")
+	}
+	if _, repoOk := imageMap["repository"]; !repoOk {
+		t.Errorf("image values missing 'repository' key")
+	}
+	if _, tagOk := imageMap["tag"]; !tagOk {
+		t.Errorf("image values missing 'tag' key")
+	}
+}
+
 func TestInsertHelpers(t *testing.T) {
 	//given
 	kind := "ClusterRole"

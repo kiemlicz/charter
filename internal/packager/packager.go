@@ -171,12 +171,12 @@ func (m *modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 				}
 
 				if len(matches) >= 1 {
-					valuesMap, err = m.wrapResult(vals, matches[i][1])
+					vm, err := m.wrapResult(vals, matches[i][1])
 					if err != nil {
 						common.Log.Errorf("Failed to wrap values selector result for expression '%s': %v, skipping", sel, err)
 						return nil, nil, err
 					}
-
+					valuesMap = common.DeepMerge(vm, valuesMap)
 				} else {
 					err = fmt.Errorf("no value path found in expression '%s'", mod.Expression)
 					return nil, nil, err
