@@ -224,13 +224,29 @@ func clearTemplates(path string) error {
 	return nil
 }
 
-func Prepare(ctx context.Context, release *common.GithubRelease, settings *common.HelmSettings) (*HelmizedManifests, error) {
-	modifiedManifests, err := ProcessManifests(ctx, release, settings)
+func FetchAndUpdate(ctx context.Context, release *common.GithubRelease, settings *common.HelmSettings) (*HelmizedManifests, error) {
+	manifests, err := GetManifests(ctx, release, settings)
 	if err != nil {
 		common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
 		return nil, err
-	} else if modifiedManifests == nil {
+	} else if manifests == nil {
 		return nil, nil
+	}
+
+	return Prepare(manifests, &release.Helm, settings)
+}
+
+func Prepare(manifests *common.Manifests, helmOps *common.HelmOps, settings *common.HelmSettings) (*HelmizedManifests, error) {
+	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", helmOps.ChartName, len(manifests.Manifests))
+	modifiedManifests, err := ChartModifier.ParametrizeManifests(
+		ChartModifier.FilterManifests(
+			manifests,
+			helmOps.Drop,
+		),
+		&helmOps.Modifications,
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	version := modifiedManifests.Version
@@ -238,9 +254,9 @@ func Prepare(ctx context.Context, release *common.GithubRelease, settings *commo
 
 	var crdsChart *chart.Chart
 	if modifiedManifests.ContainsCrds() {
-		crdsChartName := fmt.Sprintf("%s-crds", release.ChartName)
+		crdsChartName := fmt.Sprintf("%s-crds", helmOps.ChartName)
 		common.Log.Infof("Moving %d CRDs to dedicated chart %s", len(modifiedManifests.Crds), crdsChartName)
-		templates, err := createTemplates(&modifiedManifests.Crds, &release.Modifications)
+		templates, err := createTemplates(&modifiedManifests.Crds, &helmOps.Modifications)
 		if err != nil {
 			return nil, err
 		}
@@ -257,12 +273,13 @@ func Prepare(ctx context.Context, release *common.GithubRelease, settings *commo
 		}
 	}
 
-	templates, err := createTemplates(&modifiedManifests.Manifests, &release.Modifications)
+	templates, err := createTemplates(&modifiedManifests.Manifests, &helmOps.Modifications)
+	common.Log.Infof("Created %d templates for main chart", len(templates))
 	if err != nil {
 		return nil, err
 	}
 	chartData := common.ChartData{
-		Name:       release.ChartName,
+		Name:       helmOps.ChartName,
 		Version:    version,
 		AppVersion: appVersion,
 		Templates:  templates,
@@ -296,7 +313,7 @@ func createTemplates(manifests *[]map[string]any, modification *[]common.Modific
 	}
 
 	templates := make([]*chart.File, 0, len(kindToFile))
-	for _, tmpl := range templates {
+	for _, tmpl := range kindToFile {
 		templates = append(templates, tmpl)
 	}
 

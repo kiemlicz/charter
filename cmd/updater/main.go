@@ -50,7 +50,7 @@ func UpdateMode(config *common.Config) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			charts, err := packager.Prepare(ctx, &release, &config.Helm)
+			charts, err := packager.FetchAndUpdate(ctx, &release, &config.Helm)
 			if err != nil {
 				common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
 				createdCharts <- nil

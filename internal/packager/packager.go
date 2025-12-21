@@ -237,12 +237,12 @@ func (m *modifier) resultToMap(result *list.List) (*map[string]any, error) {
 	return decodeResult[*map[string]any](m, result)
 }
 
-func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*common.Manifests, error) {
+func GetManifests(ctx context.Context, releaseConfig *common.GithubRelease, helmSettings *common.HelmSettings) (*common.Manifests, error) {
 	common.Log.Infof("Updating release: %s", releaseConfig.Repo)
 
-	currentVersion, currentAppVersion, err := PeekVersions(helmSettings.SrcDir, releaseConfig.ChartName)
+	currentVersion, currentAppVersion, err := PeekVersions(helmSettings.SrcDir, releaseConfig.Helm.ChartName)
 	if err != nil {
-		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.ChartName, err)
+		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", releaseConfig.Helm.ChartName, err)
 		return nil, err
 	}
 	manifests, err := ghup.FetchManifests(ctx, releaseConfig, currentVersion, currentAppVersion)
@@ -254,20 +254,7 @@ func ProcessManifests(ctx context.Context, releaseConfig *common.GithubRelease, 
 		return nil, nil
 	}
 
-	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", releaseConfig.ChartName, len(manifests.Manifests))
-
-	modifiedManifests, err := ChartModifier.ParametrizeManifests(
-		ChartModifier.FilterManifests(
-			manifests,
-			releaseConfig.Drop,
-		),
-		&releaseConfig.Modifications,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return modifiedManifests, nil
+	return manifests, nil
 }
 
 // generic decoder

@@ -53,9 +53,13 @@ type HelmSettings struct {
 }
 
 type GithubRelease struct {
-	Owner         string         `koanf:"owner"`
-	Repo          string         `koanf:"repo"`
-	Assets        []string       `koanf:"assets"`
+	Owner  string   `koanf:"owner"`
+	Repo   string   `koanf:"repo"`
+	Assets []string `koanf:"assets"`
+	Helm   HelmOps  `koanf:"helm"`
+}
+
+type HelmOps struct {
 	ChartName     string         `koanf:"chartName"`
 	Drop          []string       `koanf:"drop"`
 	Modifications []Modification `koanf:"modifications"`
@@ -64,7 +68,7 @@ type GithubRelease struct {
 }
 
 type Modification struct {
-	Expression     string   `koanf:"expression"`     // yq expression to modify manifest
+	Expression     string   `koanf:"expression"`     // yq expression to modify manifest, when using TextRegex this is a regex replacement expression
 	TextRegex      string   `koanf:"textRegex"`      // regex to change the keys under path
 	ValuesSelector []string `koanf:"valuesSelector"` // cuts selected section and moves to Values
 	Kind           string   `koanf:"kind"`           // if set, apply modification only to resources of this kind
