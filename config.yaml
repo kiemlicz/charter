@@ -143,7 +143,9 @@ githubReleases:
           kind: Deployment
         # name change
         - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
-          reject: CustomResourceDefinition
+          reject: "CustomResourceDefinition|KubeVirt"
+        - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}"'
+          kind: "KubeVirt"
         - expression: '.roleRef.name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
           kind: "ClusterRoleBinding|RoleBinding"
         - expression: '.subjects[] .name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
@@ -306,7 +308,9 @@ githubReleases:
           kind: Deployment
         # name change
         - expression: '.metadata.name |= "{{ include \"cdi.fullname\" . }}-" + .'
-          reject: CustomResourceDefinition
+          reject: "CustomResourceDefinition|CDI"
+        - expression: '.metadata.name |= "{{ include \"cdi.fullname\" . }}"'
+          kind: "CDI"
         - expression: '.roleRef.name |= "{{ include \"cdi.fullname\" . }}-" + .'
           kind: "ClusterRoleBinding|RoleBinding"
         - expression: '.subjects[] .name |= "{{ include \"cdi.fullname\" . }}-" + .'
@@ -337,7 +341,7 @@ githubReleases:
             {{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
           textRegex: "{{ .Values.cdiOperator.role.extraLabels }}"
           kind: "^Role$"
-        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels }}"'
+        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}"'
 #          valuesSelector:
 #            - ".metadata.labels" # they are the same as above
           kind: "^RoleBinding$"
