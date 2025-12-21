@@ -331,21 +331,21 @@ githubReleases:
         - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels }}"'
           valuesSelector:
             - ".metadata.labels"
-          kind: Role
+          kind: "^Role$"
         - expression: |-
             {{- include "cdi.labels" . | nindent 8 }}
             {{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
           textRegex: "{{ .Values.cdiOperator.role.extraLabels }}"
-          kind: Role
+          kind: "^Role$"
         - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels }}"'
 #          valuesSelector:
 #            - ".metadata.labels" # they are the same as above
-          kind: RoleBinding
+          kind: "^RoleBinding$"
         - expression: |-
             {{- include "cdi.labels" . | nindent 8 }}
             {{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
           textRegex: "{{ .Values.cdi.role.extraLabels }}"
-          kind: RoleBinding
+          kind: "^RoleBinding$"
         - expression: '.metadata.labels |= "{{ .Values.cdiOperator.deployment.extraLabels }}"'
           valuesSelector:
             - ".metadata.labels"
