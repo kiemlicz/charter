@@ -141,7 +141,14 @@ githubReleases:
           valuesSelector:
             - ".spec.template.spec.securityContext"
           kind: Deployment
-        - expression: ''
+        - expression: '.metadata.labels |= "{{ .Values.kubevirtRole.extraLabels }}"'
+          valuesSelector:
+            - ".metadata.labels"
+          kind: ".*Role"
+          # todo add newline and extravalues
+        - expression: '{{- include "cdi.labels" . | nindent 8 }}'
+          textRegex: "{{ .Values.kubevirtRole.extraLabels }}"
+          kind: ".*Role"
       addValues:
         kubevirt:
           imagePullSecrets: []
@@ -160,10 +167,6 @@ githubReleases:
       addCrdValues:
         annotations:
           "helm.sh/resource-policy": "keep"
-      templates: # ????
-        - kind: .*
-          find: ".metadata.labels"
-          add: "{{- include \"kubevirt.labels\" . | nindent 4 }}"
   - owner: "kubevirt"
     repo: "containerized-data-importer"
     assets:
@@ -250,13 +253,6 @@ githubReleases:
           valuesSelector:
             - ".spec.template.spec.containers[0].imagePullPolicy"
           kind: Deployment
-          # Labels regex TODO metadata.labels extract value, then add in textReplace appropriate value
-        - textRegex: "(?m)(^metadata:\s*\n(?:[ \t]+[^\n]*\n)*?)([ \t]+)(labels:)"
-          expression: |
-            ${1}${2}${3}
-            ${2}    {{- include "%s.labels" . | nindent 8 }}
-          #          kind: ""
-          # todo rest of regexes from InsertHelpers
       addCrdValues:
         annotations:
           "helm.sh/resource-policy": "keep"

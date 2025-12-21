@@ -269,7 +269,6 @@ func TestPrepare(t *testing.T) { // this is actually an integration test with bo
 	if !strings.Contains(templateString, expectedHelper) {
 		t.Errorf("template:\n%s, does not contain expected helper:\n%s", templateString, expectedHelper)
 	}
-
 }
 
 func getTemplate(name string, templates []*chart.File) *chart.File {
