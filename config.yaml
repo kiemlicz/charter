@@ -145,57 +145,61 @@ githubReleases:
         - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
           reject: CustomResourceDefinition
         - expression: '.roleRef.name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
-          kind: ClusterRoleBinding
+          kind: "ClusterRoleBinding|RoleBinding"
         - expression: '.subjects[] .name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
-          kind: ClusterRoleBinding
+          kind: "ClusterRoleBinding|RoleBinding"
+        - expression: '.spec.template.spec.serviceAccountName |= "{{ include \"kubevirt.fullname\" . }}-" + .'
+          kind: Deployment
+        - expression: '.spec.template.spec.priorityClassName |= "{{ include \"kubevirt.fullname\" . }}-" + .'
+          kind: Deployment
         # this expression and another are tightly coupled to each other, must go last as break YAML structure
-        - expression: 'select(.metadata.name | test(".*kubevirt.io:operator$")) .metadata.labels |= "{{ .Values.kubevirt.clusterRole.extraLabels }}"'
+        - expression: 'select(.metadata.name | test(".*kubevirt.io:operator$")) .metadata.labels |= "{{ .Values.kubevirt.role.extraLabels }}"'
           valuesSelector:
             - ".metadata.labels"
           kind: ".*Role$"
         - expression: |-
             {{- include "kubevirt.labels" . | nindent 8 }}
-            {{ .Values.kubevirt.clusterRole.extraLabels | toYaml | nindent 8 }}
-          textRegex: "{{ .Values.kubevirt.clusterRole.extraLabels }}"
+            {{ .Values.kubevirt.role.extraLabels | toYaml | nindent 8 }}
+          textRegex: "{{ .Values.kubevirt.role.extraLabels }}"
           kind: ".*Role$"
-        - expression: 'select(.metadata.name | test(".*kubevirt-operator$")) .metadata.labels |= "{{ .Values.kubevirtOperator.clusterRole.extraLabels }}"'
+        - expression: 'select(.metadata.name | test(".*kubevirt-operator$")) .metadata.labels |= "{{ .Values.kubevirtOperator.role.extraLabels }}"'
           valuesSelector:
             - ".metadata.labels"
           kind: ".*Role$"
         - expression: |-
             {{- include "kubevirt.labels" . | nindent 8 }}
-            {{ .Values.kubevirtOperator.clusterRole.extraLabels | toYaml | nindent 8 }}
-          textRegex: "{{ .Values.kubevirtOperator.clusterRole.extraLabels }}"
+            {{ .Values.kubevirtOperator.role.extraLabels | toYaml | nindent 8 }}
+          textRegex: "{{ .Values.kubevirtOperator.role.extraLabels }}"
           kind: ".*Role$"
         - expression: |-
             {{- include "kubevirt.labels" . | nindent 8 }}
-            {{ .Values.kubevirtOperator.clusterRole.extraLabels | toYaml | nindent 8 }}
+            {{ .Values.kubevirtOperator.role.extraLabels | toYaml | nindent 8 }}
           textRegex: 'kubevirt.io: ""'
           kind: ".*RoleBinding$|^ServiceAccount$"
         - expression: '.metadata.labels |= "{{ .Values.kubevirtOperator.deployment.extraLabels }}"'
           valuesSelector:
             - ".metadata.labels"
-          kind: "^Deployment$"
+          kind: Deployment
         - expression: |-
             {{- include "kubevirt.labels" . | nindent 8 }}
             {{ .Values.kubevirtOperator.deployment.extraLabels | toYaml | nindent 8 }}
           textRegex: "{{ .Values.kubevirtOperator.deployment.extraLabels }}"
-          kind: "^Deployment$"
+          kind: Deployment
         - expression: '.spec.selector.matchLabels |= "{{- include \"kubevirt.selectorLabels\" . | nindent 12 }}"'
           kind: Deployment
         - expression: '.spec.template.metadata.labels |= "{{ .Values.kubevirtOperator.deployment.podLabels }}"'
           valuesSelector:
             - ".spec.template.metadata.labels"
-          kind: "^Deployment$"
+          kind: Deployment
         - expression: |-
             {{- include "kubevirt.labels" . | nindent 16 }}
             {{ .Values.kubevirtOperator.deployment.podLabels | toYaml | nindent 16 }}
           textRegex: "{{ .Values.kubevirtOperator.deployment.podLabels }}"
-          kind: "^Deployment$"
+          kind: Deployment
         - expression: '.spec.template.metadata.annotations |= "{{ .Values.kubevirtOperator.deployment.podAnnotations | toYaml | nindent 16 }}"'
           valuesSelector:
             - ".spec.template.metadata.annotations"
-          kind: "^Deployment$"
+          kind: Deployment
       addValues:
         kubevirt:
           imagePullSecrets: []
@@ -214,99 +218,165 @@ githubReleases:
       addCrdValues:
         annotations:
           "helm.sh/resource-policy": "keep"
-#  - owner: "kubevirt"
-#    repo: "containerized-data-importer"
-#    assets:
-#      - "cdi-operator.yaml"
-#      - "cdi-cr.yaml"
-#    helm:
-#      chartName: "cdi"
-#      drop:
-#        - namespace
-#        - namespaces
-#      modifications:
-#        - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
-#          reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
-#        - expression: '(.subjects[] | select(.name == "cdi-operator") .namespace) = "{{ .Release.Namespace }}"'
-#          kind: "RoleBinding|ClusterRoleBinding"
-#        - expression: '.spec.certConfig |= "{{ .Values.cdi.certConfig | toYaml | nindent 8 }}"'
-#          kind: CDI
-#        - expression: '.spec.cloneStrategyOverride |= "{{ .Values.cdi.cloneStrategyOverride }}"'
-#          kind: CDI
-#        - expression: '.spec.config |= "{{ .Values.cdi.config | toYaml | nindent 8 }}"'
+  - owner: "kubevirt"
+    repo: "containerized-data-importer"
+    assets:
+      - "cdi-operator.yaml"
+      - "cdi-cr.yaml"
+    helm:
+      chartName: "cdi"
+      drop:
+        - namespace
+        - namespaces
+      modifications:
+        - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
+          reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition"
+        - expression: '(.subjects[] | select(.name == "cdi-operator") .namespace) = "{{ .Release.Namespace }}"'
+          kind: "RoleBinding|ClusterRoleBinding"
+        - expression: '.spec.certConfig |= "{{ .Values.cdi.certConfig | toYaml | nindent 8 }}"'
+          kind: CDI
+        - expression: '.spec.cloneStrategyOverride |= "{{ .Values.cdi.cloneStrategyOverride }}"'
+          kind: CDI
+        - expression: '.spec.config |= "{{ .Values.cdi.config | toYaml | nindent 8 }}"'
+          valuesSelector:
+            - ".spec.config"
+          kind: CDI
+        - expression: '.spec.customizeComponents |= "{{ .Values.cdi.customizeComponents | toYaml | nindent 8 }}"'
+          kind: CDI
+        - expression: '.spec.imagePullPolicy |= "{{ .Values.cdi.imagePullPolicy }}"'
+          valuesSelector:
+            - ".spec.imagePullPolicy"
+          kind: CDI
+        - expression: '.spec.infra |= "{{ .Values.cdi.infra | toYaml | nindent 8 }}"'
+          valuesSelector:
+            - ".spec.infra"
+          kind: CDI
+        - expression: '.spec.priorityClass |= "{{ .Values.cdi.priorityClass }}"'
+          kind: CDI
+        - expression: '.spec.uninstallStrategy |= "{{ .Values.cdi.uninstallStrategy }}"'
+          kind: CDI
+        - expression: '.spec.workload |= "{{ .Values.cdi.workload | toYaml | nindent 8 }}"'
+          valuesSelector:
+            - ".spec.workload"
+          kind: CDI
+        - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
+          valuesSelector:
+            - ".metadata.annotations"
+          kind: CustomResourceDefinition
+        - expression: '.spec.replicas |= "{{ .Values.cdiOperator.deployment.replicas }}"'
+          valuesSelector:
+            - ".spec.replicas"
+          kind: Deployment
+        - expression: '.spec.template.spec.containers[0].env |= "{{ .Values.cdiOperator.deployment.env | toYaml | nindent 20 }}"'
+          valuesSelector:
+            - ".spec.template.spec.containers[0].env"
+          kind: Deployment
+        - expression: '.spec.template.spec.nodeSelector |= "{{ .Values.cdiOperator.deployment.nodeSelector | toYaml | nindent 16 }}"'
+          valuesSelector:
+            - ".spec.template.spec.nodeSelector"
+          kind: Deployment
+        - expression: '.spec.template.spec.tolerations |= "{{ .Values.cdiOperator.deployment.tolerations | toYaml | nindent 16 }}"'
+          valuesSelector:
+            - ".spec.template.spec.tolerations"
+          kind: Deployment
+        - expression: '.spec.template.spec.affinity |= "{{ .Values.cdiOperator.deployment.affinity | toYaml | nindent 16 }}"'
+          valuesSelector:
+            - ".spec.template.spec.affinity"
+          kind: Deployment
+        - expression: '.spec.template.spec.containers[0].resources |= "{{ .Values.cdiOperator.deployment.resources | toYaml | nindent 20 }}"'
+          valuesSelector:
+            - ".spec.template.spec.containers[0].resources"
+          kind: Deployment
+        - expression: '.spec.template.spec.containers[0].securityContext |= "{{ .Values.cdiOperator.deployment.securityContext | toYaml | nindent 20 }}"'
+          valuesSelector:
+            - ".spec.template.spec.containers[0].securityContext"
+          kind: Deployment
+        - expression: '.spec.template.spec.securityContext |= "{{ .Values.cdiOperator.deployment.podSecurityContext | toYaml | nindent 16 }}"'
+          valuesSelector:
+            - ".spec.template.spec.securityContext"
+          kind: Deployment
+        - expression: '.spec.template.spec.containers[0].image |= "{{ .Values.cdiOperator.deployment.image.repository }}:{{ .Values.cdiOperator.deployment.image.tag }}"'
+          valuesSelector:
+            - ".spec.template.spec.containers[0].image | split(\":\") | .[0]"
+            - ".spec.template.spec.containers[0].image | split(\":\") | .[1]"
+          kind: Deployment
+        - expression: '.spec.template.spec.containers[0].imagePullPolicy |= "{{ .Values.cdiOperator.deployment.imagePullPolicy }}"'
+          valuesSelector:
+            - ".spec.template.spec.containers[0].imagePullPolicy"
+          kind: Deployment
+        # name change
+        - expression: '.metadata.name |= "{{ include \"cdi.fullname\" . }}-" + .'
+          reject: CustomResourceDefinition
+        - expression: '.roleRef.name |= "{{ include \"cdi.fullname\" . }}-" + .'
+          kind: "ClusterRoleBinding|RoleBinding"
+        - expression: '.subjects[] .name |= "{{ include \"cdi.fullname\" . }}-" + .'
+          kind: "ClusterRoleBinding|RoleBinding"
+        - expression: '.spec.template.spec.serviceAccountName |= "{{ include \"cdi.fullname\" . }}-" + .'
+          kind: Deployment
+        # this expression and another are tightly coupled to each other, must go last as break YAML structure
+        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.clusterRole.extraLabels }}"'
+          valuesSelector:
+            - ".metadata.labels"
+          kind: "ClusterRole$"
+        - expression: |-
+            {{- include "cdi.labels" . | nindent 8 }}
+            {{ .Values.cdiOperator.clusterRole.extraLabels | toYaml | nindent 8 }}
+          textRegex: "{{ .Values.cdiOperator.clusterRole.extraLabels }}"
+          kind: "ClusterRole$"
+        - expression: |-
+            {{- include "cdi.labels" . | nindent 8 }}
+            {{ .Values.cdiOperator.clusterRole.extraLabels | toYaml | nindent 8 }}
+          textRegex: 'operator.cdi.kubevirt.io: ""'
+          kind: "ClusterRoleBinding$|^ServiceAccount$"
+        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels }}"'
+          valuesSelector:
+            - ".metadata.labels"
+          kind: Role
+        - expression: |-
+            {{- include "cdi.labels" . | nindent 8 }}
+            {{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
+          textRegex: "{{ .Values.cdiOperator.role.extraLabels }}"
+          kind: Role
+        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels }}"'
 #          valuesSelector:
-#            - ".spec.config"
-#          kind: CDI
-#        - expression: '.spec.customizeComponents |= "{{ .Values.cdi.customizeComponents | toYaml | nindent 8 }}"'
-#          kind: CDI
-#        - expression: '.spec.imagePullPolicy |= "{{ .Values.cdi.imagePullPolicy }}"'
-#          valuesSelector:
-#            - ".spec.imagePullPolicy"
-#          kind: CDI
-#        - expression: '.spec.infra |= "{{ .Values.cdi.infra | toYaml | nindent 8 }}"'
-#          valuesSelector:
-#            - ".spec.infra"
-#          kind: CDI
-#        - expression: '.spec.priorityClass |= "{{ .Values.cdi.priorityClass }}"'
-#          kind: CDI
-#        - expression: '.spec.uninstallStrategy |= "{{ .Values.cdi.uninstallStrategy }}"'
-#          kind: CDI
-#        - expression: '.spec.workload |= "{{ .Values.cdi.workload | toYaml | nindent 8 }}"'
-#          valuesSelector:
-#            - ".spec.workload"
-#          kind: CDI
-#        - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
-#          valuesSelector:
-#            - ".metadata.annotations"
-#          kind: CustomResourceDefinition
-#        - expression: '.spec.replicas |= "{{ .Values.cdiOperator.replicas }}"'
-#          valuesSelector:
-#            - ".spec.replicas"
-#          kind: Deployment
-#        - expression: '.spec.template.spec.containers[0].env |= "{{ .Values.cdiOperator.env | toYaml | nindent 20 }}"'
-#          valuesSelector:
-#            - ".spec.template.spec.containers[0].env"
-#          kind: Deployment
-#        - expression: '.spec.template.spec.nodeSelector |= "{{ .Values.cdiOperator.nodeSelector | toYaml | nindent 16 }}"'
-#          valuesSelector:
-#            - ".spec.template.spec.nodeSelector"
-#          kind: Deployment
-#        - expression: '.spec.template.spec.tolerations |= "{{ .Values.cdiOperator.tolerations | toYaml | nindent 16 }}"'
-#          valuesSelector:
-#            - ".spec.template.spec.tolerations"
-#          kind: Deployment
-#        - expression: '.spec.template.spec.affinity |= "{{ .Values.cdiOperator.affinity | toYaml | nindent 16 }}"'
-#          valuesSelector:
-#            - ".spec.template.spec.affinity"
-#          kind: Deployment
-#        - expression: '.spec.template.spec.containers[0].resources |= "{{ .Values.cdiOperator.resources | toYaml | nindent 20 }}"'
-#          valuesSelector:
-#            - ".spec.template.spec.containers[0].resources"
-#          kind: Deployment
-#        - expression: '.spec.template.spec.containers[0].securityContext |= "{{ .Values.cdiOperator.securityContext | toYaml | nindent 20 }}"'
-#          valuesSelector:
-#            - ".spec.template.spec.containers[0].securityContext"
-#          kind: Deployment
-#        - expression: '.spec.template.spec.securityContext |= "{{ .Values.cdiOperator.podSecurityContext | toYaml | nindent 16 }}"'
-#          valuesSelector:
-#            - ".spec.template.spec.securityContext"
-#          kind: Deployment
-#        - expression: '.spec.template.spec.containers[0].image |= "{{ .Values.cdiOperator.image.repository }}:{{ .Values.cdiOperator.image.tag }}"'
-#          valuesSelector:
-#            - ".spec.template.spec.containers[0].image | split(\":\") | .[0]"
-#            - ".spec.template.spec.containers[0].image | split(\":\") | .[1]"
-#          kind: Deployment
-#        - expression: '.spec.template.spec.containers[0].imagePullPolicy |= "{{ .Values.cdiOperator.imagePullPolicy }}"'
-#          valuesSelector:
-#            - ".spec.template.spec.containers[0].imagePullPolicy"
-#          kind: Deployment
-#      addCrdValues:
-#        annotations:
-#          "helm.sh/resource-policy": "keep"
-#      addValues:
-#        cdi:
-#          certConfig: {}
-#          cloneStrategyOverride: ""
-#          customizeComponents: {}
-#          priorityClass: ""
-#          uninstallStrategy: ""
+#            - ".metadata.labels" # they are the same as above
+          kind: RoleBinding
+        - expression: |-
+            {{- include "cdi.labels" . | nindent 8 }}
+            {{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
+          textRegex: "{{ .Values.cdi.role.extraLabels }}"
+          kind: RoleBinding
+        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.deployment.extraLabels }}"'
+          valuesSelector:
+            - ".metadata.labels"
+          kind: Deployment
+        - expression: |-
+            {{- include "cdi.labels" . | nindent 8 }}
+            {{ .Values.cdiOperator.deployment.extraLabels | toYaml | nindent 8 }}
+          textRegex: "{{ .Values.cdiOperator.deployment.extraLabels }}"
+          kind: Deployment
+        - expression: '.spec.selector.matchLabels |= "{{- include \"cdi.selectorLabels\" . | nindent 12 }}"'
+          kind: Deployment
+        - expression: '.spec.template.metadata.labels |= "{{ .Values.cdiOperator.deployment.podLabels }}"'
+          valuesSelector:
+            - ".spec.template.metadata.labels"
+          kind: Deployment
+        - expression: |-
+            {{- include "cdi.labels" . | nindent 16 }}
+            {{ .Values.cdiOperator.deployment.podLabels | toYaml | nindent 16 }}
+          textRegex: "{{ .Values.cdiOperator.deployment.podLabels }}"
+          kind: Deployment
+        - expression: '.spec.template.metadata.annotations |= "{{ .Values.cdiOperator.deployment.podAnnotations | toYaml | nindent 16 }}"'
+          valuesSelector:
+            - ".spec.template.metadata.annotations"
+          kind: Deployment
+      addCrdValues:
+        annotations:
+          "helm.sh/resource-policy": "keep"
+      addValues:
+        cdi:
+          certConfig: {}
+          cloneStrategyOverride: ""
+          customizeComponents: {}
+          priorityClass: ""
+          uninstallStrategy: ""
