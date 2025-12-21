@@ -320,23 +320,7 @@ func createTemplates(manifests *[]map[string]any, modification *[]common.Modific
 }
 
 func insertHelpers(kind string, template *chart.File, mods *[]common.Modification) error {
-	//if none match, add `labels` key
-	// todo fix deployment modification spec.template.metadata.labels modified too with wrong template
-	// handle selector labels as this should be the way
-	content := string(template.Data) // ???
-
-	//	labelsReplaceString := fmt.Sprintf(`${1}${2}${3}
-	//${2}    {{- include "%s.labels" . | nindent 8 }}`, chartName)
-	//	selectorLabelsReplaceString := fmt.Sprintf(`${1}${2}${3}${4}
-	//${2}    {{- include "%s.selectorLabels" . | nindent 12 }}`, chartName)
-	//	specSelectorReplaceString := fmt.Sprintf(`${1}${2}${3}
-	//${2}    {{- include "%s.selectorLabels" . | nindent 8 }}`, chartName)
-	//	content = LabelsRegexCompiled.ReplaceAllString(content, labelsReplaceString)
-	//	content = SpecSelectorMatchLabelsRegexCompiled.ReplaceAllString(content, selectorLabelsReplaceString) // possibly limit to controllers/deployments only
-	//	if kind == "service" {
-	//		content = SpecSelectorRegexCompiled.ReplaceAllString(content, specSelectorReplaceString)
-	//	}
-
+	content := string(template.Data)
 	for _, mod := range *mods {
 		if mod.TextRegex == "" {
 			continue
@@ -362,7 +346,6 @@ func insertHelpers(kind string, template *chart.File, mods *[]common.Modificatio
 		textRegex := regexp.MustCompile(mod.TextRegex)
 		content = textRegex.ReplaceAllString(content, mod.Expression)
 	}
-
 	template.Data = []byte(content)
 	return nil
 }
