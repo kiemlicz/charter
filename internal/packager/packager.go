@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/kiemlicz/charter/internal/common"
@@ -159,6 +160,7 @@ func (m *modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 			}
 		}
 
+		valuesMap := new(map[string]any)
 		if mod.ValuesSelector != nil {
 			matches := common.ValuesRegexCompiled.FindAllStringSubmatch(mod.Expression, -1)
 			for i, sel := range mod.ValuesSelector {
@@ -169,11 +171,12 @@ func (m *modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 				}
 
 				if len(matches) >= 1 {
-					valuesMap, err := m.wrapResult(vals, matches[i][1])
+					valuesMap, err = m.wrapResult(vals, matches[i][1])
 					if err != nil {
+						common.Log.Errorf("Failed to wrap values selector result for expression '%s': %v, skipping", sel, err)
 						return nil, nil, err
 					}
-					extractedValues = *common.DeepMerge(&extractedValues, valuesMap)
+
 				} else {
 					err = fmt.Errorf("no value path found in expression '%s'", mod.Expression)
 					return nil, nil, err
@@ -186,10 +189,14 @@ func (m *modifier) applyModifications(manifest *map[string]any, mods *[]common.M
 			common.Log.Errorf("Failed to apply expression '%s' on manifest: %v", mod.Expression, err)
 			return nil, nil, err
 		}
-
 		resultManifest, err := m.resultToMap(result)
 		if err != nil {
 			return nil, nil, err
+		}
+
+		if !reflect.DeepEqual(modifiedManifest, *resultManifest) {
+			// only now deep merge values
+			extractedValues = *common.DeepMerge(&extractedValues, valuesMap)
 		}
 		modifiedManifest = *resultManifest
 	}
@@ -206,8 +213,8 @@ func (m *modifier) wrapResult(result *list.List, underPath string) (*map[string]
 	// Decode the (single) result node into a Go value
 	v, err := m.resultToAny(result)
 	if err != nil {
-		common.Log.Errorf("Cannot decode valuesSelector result: %v", err)
-		return nil, err
+		// manifest might be already modified with helm templates and fail parsing
+		common.Log.Warnf("Cannot decode valuesSelector extracted result: %v, omitting", err)
 	}
 
 	if v == nil {

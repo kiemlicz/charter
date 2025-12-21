@@ -54,9 +54,10 @@ func UpdateMode(config *common.Config) error {
 			if err != nil {
 				common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
 				createdCharts <- nil
+			} else {
+				common.Log.Infof("Successfully created Helm chart for release: %s", release.Repo)
+				createdCharts <- charts
 			}
-			common.Log.Infof("Successfully created Helm chart for release: %s", release.Repo)
-			createdCharts <- charts
 		}()
 	}
 

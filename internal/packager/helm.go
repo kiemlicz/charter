@@ -227,7 +227,6 @@ func clearTemplates(path string) error {
 func FetchAndUpdate(ctx context.Context, release *common.GithubRelease, settings *common.HelmSettings) (*HelmizedManifests, error) {
 	manifests, err := GetManifests(ctx, release, settings)
 	if err != nil {
-		common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
 		return nil, err
 	} else if manifests == nil {
 		return nil, nil
