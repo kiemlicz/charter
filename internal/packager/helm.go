@@ -185,10 +185,9 @@ func Push(packagedPath, remote string) (string, error) {
 	if fmt.Sprintf("oci://%s", result.Ref) != ref {
 		common.Log.Warnf("Pushed chart reference %s does not match expected %s", result.Ref, ref)
 		return result.Ref, nil
-	} else {
-		common.Log.Infof("Successfully pushed chart to %s", ref)
 	}
 
+	common.Log.Infof("Successfully pushed chart to %s", ref)
 	return ref, nil
 }
 
@@ -206,7 +205,7 @@ func versionExistsInRegistry(rc *registry.Client, ref, version string) (bool, er
 }
 
 func clearTemplates(path string) error {
-	templatesDir := fmt.Sprintf("%s/templates", path)
+	templatesDir := filepath.Join(path, "templates")
 	files, err := os.ReadDir(templatesDir)
 	if err != nil {
 		return err
@@ -215,7 +214,7 @@ func clearTemplates(path string) error {
 		if strings.HasSuffix(file.Name(), ".tpl") {
 			continue
 		}
-		err := os.RemoveAll(fmt.Sprintf("%s/%s", templatesDir, file.Name()))
+		err := os.RemoveAll(filepath.Join(templatesDir, file.Name()))
 		if err != nil {
 			return err
 		}
@@ -235,6 +234,9 @@ func FetchAndUpdate(ctx context.Context, release *common.GithubRelease, settings
 	return Prepare(manifests, &release.Helm, settings)
 }
 
+// Prepare creates a Helm chart by
+// applying manifests modifications
+// inserting helpers using textRegex clauses
 func Prepare(manifests *common.Manifests, helmOps *common.HelmOps, settings *common.HelmSettings) (*HelmizedManifests, error) {
 	common.Log.Infof("Creating or updating Helm chart %s with %d manifests", helmOps.ChartName, len(manifests.Manifests))
 	modifiedManifests, err := ChartModifier.ParametrizeManifests(
