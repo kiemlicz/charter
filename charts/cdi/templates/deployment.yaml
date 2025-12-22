@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
     labels: {{- include "cdi.labels" . | nindent 8 }}
 {{ .Values.cdiOperator.deployment.extraLabels | toYaml | nindent 8 }}
-    name: '{{ include "cdi.fullname" . }}-cdi-operator'
+    name: cdi-operator
     namespace: {{ .Release.Namespace }}
 spec:
     replicas: {{ .Values.cdiOperator.deployment.replicas }}

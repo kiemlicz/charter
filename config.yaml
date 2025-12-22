@@ -306,7 +306,7 @@ githubReleases:
           kind: Deployment
         # name change
         - expression: '.metadata.name |= "{{ include \"cdi.fullname\" . }}-" + .'
-          reject: "CustomResourceDefinition|CDI"
+          reject: "CustomResourceDefinition|CDI|Deployment" # Deployment name when changed from cdi-operator, breaks the metrics
         - expression: '.metadata.name |= "{{ include \"cdi.fullname\" . }}"'
           kind: "CDI"
         - expression: '.roleRef.name |= "{{ include \"cdi.fullname\" . }}-" + .'
