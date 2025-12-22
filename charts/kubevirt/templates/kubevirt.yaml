@@ -1,7 +1,7 @@
 apiVersion: kubevirt.io/v1
 kind: KubeVirt
 metadata:
-    name: kubevirt
+    name: {{ include "kubevirt.fullname" . }}
     namespace: {{ .Release.Namespace }}
 spec:
     certificateRotateStrategy: {{ .Values.kubevirt.certificateRotateStrategy | toYaml | nindent 8 }}
