@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/kiemlicz/charter/internal/common"
-	"github.com/kiemlicz/charter/internal/git"
 	"github.com/kiemlicz/charter/internal/packager"
+	"github.com/kiemlicz/charter/internal/updater/git"
 	ghup "github.com/kiemlicz/charter/internal/updater/github"
 )
 
