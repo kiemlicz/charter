@@ -1,45 +1,53 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    labels:
-        cdi.kubevirt.io: cdi-operator
-        name: cdi-operator
-        operator.cdi.kubevirt.io: ""
-        prometheus.cdi.kubevirt.io: "true"
-    name: cdi-operator
+    labels: {{- include "cdi.labels" . | nindent 8 }}
+{{ .Values.cdiOperator.deployment.extraLabels | toYaml | nindent 8 }}
+    name: '{{ include "cdi.fullname" . }}-cdi-operator'
     namespace: {{ .Release.Namespace }}
 spec:
-    replicas: {{ .Values.cdiOperator.replicas }}
+    replicas: {{ .Values.cdiOperator.deployment.replicas }}
     selector:
-        matchLabels:
-            name: cdi-operator
-            operator.cdi.kubevirt.io: ""
+        matchLabels: {{- include "cdi.selectorLabels" . | nindent 12 }}
     strategy: {}
     template:
         metadata:
-            annotations:
-                openshift.io/required-scc: restricted-v2
-            labels:
-                cdi.kubevirt.io: cdi-operator
-                name: cdi-operator
-                operator.cdi.kubevirt.io: ""
-                prometheus.cdi.kubevirt.io: "true"
+            annotations: {{ .Values.cdiOperator.deployment.podAnnotations | toYaml | nindent 16 }}
+            labels: {{- include "cdi.labels" . | nindent 16 }}
+{{ .Values.cdiOperator.deployment.podLabels | toYaml | nindent 16 }}
         spec:
-            affinity: {{ .Values.cdiOperator.affinity | toYaml | nindent 16 }}
+            affinity: {{ .Values.cdiOperator.deployment.affinity | toYaml | nindent 16 }}
             containers:
-                - env: {{ .Values.cdiOperator.env | toYaml | nindent 20 }}
-                  image: {{ .Values.cdiOperator.image.repository }}:{{ .Values.cdiOperator.image.tag }}
-                  imagePullPolicy: {{ .Values.cdiOperator.imagePullPolicy }}
+                - env: {{ .Values.cdiOperator.deployment.env | toYaml | nindent 20 }}
+                  image: {{ .Values.cdiOperator.deployment.image.repository }}:{{ .Values.cdiOperator.deployment.image.tag }}
+                  imagePullPolicy: {{ .Values.cdiOperator.deployment.imagePullPolicy }}
+                  livenessProbe:
+                    httpGet:
+                        path: /healthz
+                        port: 8444
+                        scheme: HTTP
+                    initialDelaySeconds: 5
+                    timeoutSeconds: 10
                   name: cdi-operator
                   ports:
                     - containerPort: 8443
                       name: metrics
                       protocol: TCP
-                  resources: {{ .Values.cdiOperator.resources | toYaml | nindent 20 }}
-                  securityContext: {{ .Values.cdiOperator.securityContext | toYaml | nindent 20 }}
+                    - containerPort: 8444
+                      name: health
+                      protocol: TCP
+                  readinessProbe:
+                    httpGet:
+                        path: /readyz
+                        port: 8444
+                        scheme: HTTP
+                    initialDelaySeconds: 5
+                    timeoutSeconds: 10
+                  resources: {{ .Values.cdiOperator.deployment.resources | toYaml | nindent 20 }}
+                  securityContext: {{ .Values.cdiOperator.deployment.securityContext | toYaml | nindent 20 }}
                   terminationMessagePath: /dev/termination-log
                   terminationMessagePolicy: FallbackToLogsOnError
-            nodeSelector: {{ .Values.cdiOperator.nodeSelector | toYaml | nindent 16 }}
-            securityContext: {{ .Values.cdiOperator.podSecurityContext | toYaml | nindent 16 }}
-            serviceAccountName: cdi-operator
-            tolerations: {{ .Values.cdiOperator.tolerations | toYaml | nindent 16 }}
+            nodeSelector: {{ .Values.cdiOperator.deployment.nodeSelector | toYaml | nindent 16 }}
+            securityContext: {{ .Values.cdiOperator.deployment.podSecurityContext | toYaml | nindent 16 }}
+            serviceAccountName: '{{ include "cdi.fullname" . }}-cdi-operator'
+            tolerations: {{ .Values.cdiOperator.deployment.tolerations | toYaml | nindent 16 }}

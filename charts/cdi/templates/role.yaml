@@ -1,12 +1,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-    labels:
-        app: containerized-data-importer
-        app.kubernetes.io/component: storage
-        app.kubernetes.io/managed-by: cdi-operator
-        cdi.kubevirt.io: ""
-    name: cdi-operator
+    labels: {{- include "cdi.labels" . | nindent 8 }}
+{{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
+    name: '{{ include "cdi.fullname" . }}-cdi-operator'
     namespace: {{ .Release.Namespace }}
 rules:
     - apiGroups:

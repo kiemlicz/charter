@@ -1,7 +1,7 @@
 apiVersion: cdi.kubevirt.io/v1beta1
 kind: CDI
 metadata:
-    name: cdi
+    name: {{ include "cdi.fullname" . }}
     namespace: {{ .Release.Namespace }}
 spec:
     certConfig: {{ .Values.cdi.certConfig | toYaml | nindent 8 }}
