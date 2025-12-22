@@ -84,7 +84,7 @@ func UpdateMode(config *common.Config) error {
 			return err
 		}
 		if exists {
-			common.Log.Infof("Branch %s already exists: close it or merge it, then re-try, skipping", branch)
+			common.Log.Warnf("Branch %s already exists: close it or merge it, then re-try, skipping", branch)
 			continue
 		}
 		err = gitRepo.CreateBranch(config.PullRequest.DefaultBranch, branch)
