@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -127,6 +128,10 @@ func PublishMode(config *common.Config) error {
 			}
 			ref, err := packager.Push(packagedPath, config.Helm.Remote)
 			if err != nil {
+				if errors.Is(err, packager.ErrVersionExists) {
+					common.Log.Infof("Chart %s not published, already exists in desired version", file.Name())
+					continue
+				}
 				return err
 			}
 			common.Log.Infof("Chart %s published to %s", file.Name(), ref)

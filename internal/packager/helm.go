@@ -2,6 +2,7 @@ package packager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,6 +19,8 @@ import (
 	"helm.sh/helm/v3/pkg/lint"
 	"helm.sh/helm/v3/pkg/registry"
 )
+
+var ErrVersionExists = errors.New("chart version already exists in registry")
 
 // HelmizedManifests holds the Helm chart and its path created from Kubernetes manifests.
 type HelmizedManifests struct {
@@ -172,7 +175,7 @@ func Push(packagedPath, remote string) (string, error) {
 	}
 	if exists {
 		common.Log.Errorf("version %s of chart %s already exists in the registry %s", ch.Metadata.Version, chartName, ref)
-		return "", fmt.Errorf("version %s of chart %s already exists in the registry %s", ch.Metadata.Version, chartName, ref)
+		return "", ErrVersionExists
 	}
 
 	common.Log.Infof("Pushing chart %s version %s to %s", chartName, ch.Metadata.Version, ref)
