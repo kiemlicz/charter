@@ -158,24 +158,24 @@ githubReleases:
         - expression: 'select(.metadata.name | test(".*kubevirt.io:operator$")) .metadata.labels |= "{{ .Values.kubevirt.role.extraLabels }}"'
           valuesSelector:
             - ".metadata.labels"
-          kind: ".*Role$"
+          kind: "^ClusterRole$"
         - expression: |-
             {{- include "kubevirt.labels" . | nindent 8 }}
             {{ .Values.kubevirt.role.extraLabels | toYaml | nindent 8 }}
           textRegex: "{{ .Values.kubevirt.role.extraLabels }}"
-          kind: ".*Role$"
-        - expression: 'select(.metadata.name | test(".*kubevirt-operator$")) .metadata.labels |= "{{ .Values.kubevirtOperator.role.extraLabels }}"'
+          kind: "^ClusterRole$"
+        - expression: 'select(.metadata.name | test(".*kubevirt-operator$")) .metadata.labels |= "{{ .Values.kubevirtOperator.commonLabels }}"'
           valuesSelector:
             - ".metadata.labels"
           kind: ".*Role$"
         - expression: |-
             {{- include "kubevirt.labels" . | nindent 8 }}
-            {{ .Values.kubevirtOperator.role.extraLabels | toYaml | nindent 8 }}
-          textRegex: "{{ .Values.kubevirtOperator.role.extraLabels }}"
+            {{ .Values.kubevirtOperator.commonLabels | toYaml | nindent 8 }}
+          textRegex: "{{ .Values.kubevirtOperator.commonLabels }}"
           kind: ".*Role$"
         - expression: |-
             {{- include "kubevirt.labels" . | nindent 8 }}
-            {{ .Values.kubevirtOperator.role.extraLabels | toYaml | nindent 8 }}
+            {{ .Values.kubevirtOperator.commonLabels | toYaml | nindent 8 }}
           textRegex: 'kubevirt.io: ""'
           kind: ".*RoleBinding$|^ServiceAccount$"
         - expression: '.metadata.labels |= "{{ .Values.kubevirtOperator.deployment.extraLabels }}"'
@@ -318,18 +318,18 @@ githubReleases:
         - expression: '.spec.template.spec.serviceAccountName |= "{{ include \"cdi.fullname\" . }}-" + .'
           kind: Deployment
         # this expression and another are tightly coupled to each other, must go last as break YAML structure
-        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.clusterRole.extraLabels }}"'
+        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.commonLabels }}"'
           valuesSelector:
             - ".metadata.labels"
           kind: "ClusterRole$"
         - expression: |-
             {{- include "cdi.labels" . | nindent 8 }}
-            {{ .Values.cdiOperator.clusterRole.extraLabels | toYaml | nindent 8 }}
-          textRegex: "{{ .Values.cdiOperator.clusterRole.extraLabels }}"
+            {{ .Values.cdiOperator.commonLabels | toYaml | nindent 8 }}
+          textRegex: "{{ .Values.cdiOperator.commonLabels }}"
           kind: "ClusterRole$"
         - expression: |-
             {{- include "cdi.labels" . | nindent 8 }}
-            {{ .Values.cdiOperator.clusterRole.extraLabels | toYaml | nindent 8 }}
+            {{ .Values.cdiOperator.commonLabels | toYaml | nindent 8 }}
           textRegex: 'operator.cdi.kubevirt.io: ""'
           kind: "ClusterRoleBinding$|^ServiceAccount$"
         - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels }}"'
@@ -341,14 +341,14 @@ githubReleases:
             {{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
           textRegex: "{{ .Values.cdiOperator.role.extraLabels }}"
           kind: "^Role$"
-        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}"'
+        - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels }}"'
 #          valuesSelector:
 #            - ".metadata.labels" # they are the same as above
           kind: "^RoleBinding$"
         - expression: |-
             {{- include "cdi.labels" . | nindent 8 }}
             {{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
-          textRegex: "{{ .Values.cdi.role.extraLabels }}"
+          textRegex: "{{ .Values.cdiOperator.role.extraLabels }}"
           kind: "^RoleBinding$"
         - expression: '.metadata.labels |= "{{ .Values.cdiOperator.deployment.extraLabels }}"'
           valuesSelector:
