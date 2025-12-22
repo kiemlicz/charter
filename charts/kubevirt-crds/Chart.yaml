@@ -1,6 +1,6 @@
 apiVersion: v2
-appVersion: v1.6.2
+appVersion: v1.7.0
 description: A Helm Chart for kubevirt-crds
 name: kubevirt-crds
 type: application
-version: 1.6.3-beta.1
+version: 1.7.0

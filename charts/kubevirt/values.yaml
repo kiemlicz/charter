@@ -3,6 +3,7 @@ kubevirt:
     configuration:
         developerConfiguration:
             featureGates: []
+        imagePullPolicy: IfNotPresent
     customizeComponents: {}
     imagePullPolicy: IfNotPresent
     imagePullSecrets: []
@@ -14,75 +15,112 @@ kubevirt:
     productComponent: ""
     productName: ""
     productVersion: ""
+    role:
+        extraLabels:
+            operator.kubevirt.io: ""
+            rbac.authorization.k8s.io/aggregate-to-admin: "true"
     serviceMonitorNamespace: ""
     synchronizationPort: ""
     uninstallStrategy: ""
     workloadUpdateStrategy: {}
     workloads: {}
 kubevirtOperator:
-    affinity:
-        podAntiAffinity:
-            preferredDuringSchedulingIgnoredDuringExecution:
-                - podAffinityTerm:
-                    labelSelector:
+    commonLabels:
+        kubevirt.io: ""
+    deployment:
+        affinity:
+            nodeAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                    - preference:
                         matchExpressions:
-                            - key: kubevirt.io
-                              operator: In
-                              values:
-                                - virt-operator
-                    topologyKey: kubernetes.io/hostname
-                  weight: 1
-    args:
-        - --port
-        - "8443"
-        - -v
-        - "2"
-    command:
-        - virt-operator
-    env:
-        - name: VIRT_OPERATOR_IMAGE
-          value: quay.io/kubevirt/virt-operator:v1.6.2
-        - name: WATCH_NAMESPACE
-          valueFrom:
-            fieldRef:
-                fieldPath: metadata.annotations['olm.targetNamespaces']
-        - name: KUBEVIRT_VERSION
-          value: v1.6.2
-    image:
-        repository: quay.io/kubevirt/virt-operator
-        tag: v1.6.2
-    imagePullPolicy: IfNotPresent
-    nodeSelector:
-        kubernetes.io/os: linux
-    podSecurityContext:
-        runAsNonRoot: true
-        seccompProfile:
-            type: RuntimeDefault
-    replicas: 2
-    resources:
-        requests:
-            cpu: 10m
-            memory: 450Mi
-    securityContext:
-        allowPrivilegeEscalation: false
-        capabilities:
-            drop:
-                - ALL
-        seccompProfile:
-            type: RuntimeDefault
-    tolerations:
-        - key: CriticalAddonsOnly
-          operator: Exists
-    volumeMounts:
-        - mountPath: /etc/virt-operator/certificates
-          name: kubevirt-operator-certs
-          readOnly: true
-        - mountPath: /profile-data
-          name: profile-data
-    volumes:
-        - name: kubevirt-operator-certs
-          secret:
-            optional: true
-            secretName: kubevirt-operator-certs
-        - emptyDir: {}
-          name: profile-data
+                            - key: node-role.kubernetes.io/worker
+                              operator: DoesNotExist
+                      weight: 100
+                requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: node-role.kubernetes.io/control-plane
+                              operator: Exists
+                        - matchExpressions:
+                            - key: node-role.kubernetes.io/master
+                              operator: Exists
+            podAntiAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                    - podAffinityTerm:
+                        labelSelector:
+                            matchExpressions:
+                                - key: kubevirt.io
+                                  operator: In
+                                  values:
+                                    - virt-operator
+                        topologyKey: kubernetes.io/hostname
+                      weight: 1
+        args:
+            - --port
+            - "8443"
+            - -v
+            - "2"
+        command:
+            - virt-operator
+        env:
+            - name: VIRT_OPERATOR_IMAGE
+              value: quay.io/kubevirt/virt-operator:v1.7.0
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                    fieldPath: metadata.annotations['olm.targetNamespaces']
+            - name: KUBEVIRT_VERSION
+              value: v1.7.0
+        extraLabels:
+            kubevirt.io: virt-operator
+        image:
+            repository: quay.io/kubevirt/virt-operator
+            tag: v1.7.0
+        imagePullPolicy: IfNotPresent
+        nodeSelector:
+            kubernetes.io/os: linux
+        podAnnotations:
+            openshift.io/required-scc: restricted-v2
+        podLabels:
+            kubevirt.io: virt-operator
+            name: virt-operator
+            np.kubevirt.io/allow-access-cluster-services: "true"
+            prometheus.kubevirt.io: "true"
+        podSecurityContext:
+            runAsNonRoot: true
+            seccompProfile:
+                type: RuntimeDefault
+        replicas: 2
+        resources:
+            requests:
+                cpu: 10m
+                memory: 450Mi
+        securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+                drop:
+                    - ALL
+            seccompProfile:
+                type: RuntimeDefault
+        tolerations:
+            - key: CriticalAddonsOnly
+              operator: Exists
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/control-plane
+              operator: Exists
+            - effect: NoSchedule
+              key: node-role.kubernetes.io/master
+              operator: Exists
+        volumeMounts:
+            - mountPath: /etc/virt-operator/certificates
+              name: kubevirt-operator-certs
+              readOnly: true
+            - mountPath: /profile-data
+              name: profile-data
+        volumes:
+            - name: kubevirt-operator-certs
+              secret:
+                optional: true
+                secretName: kubevirt-operator-certs
+            - emptyDir: {}
+              name: profile-data

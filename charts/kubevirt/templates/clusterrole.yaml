@@ -1,10 +1,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-    labels:
-        operator.kubevirt.io: ""
-        rbac.authorization.k8s.io/aggregate-to-admin: "true"
-    name: kubevirt.io:operator
+    labels: {{- include "kubevirt.labels" . | nindent 8 }}
+{{ .Values.kubevirt.role.extraLabels | toYaml | nindent 8 }}
+    name: '{{ include "kubevirt.fullname" . }}-kubevirt.io:operator'
 rules:
     - apiGroups:
         - kubevirt.io
@@ -24,9 +23,9 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-    labels:
-        kubevirt.io: ""
-    name: kubevirt-operator
+    labels: {{- include "kubevirt.labels" . | nindent 8 }}
+{{ .Values.kubevirtOperator.commonLabels | toYaml | nindent 8 }}
+    name: '{{ include "kubevirt.fullname" . }}-kubevirt-operator'
 rules:
     - apiGroups:
         - kubevirt.io
@@ -38,7 +37,6 @@ rules:
         - watch
         - patch
         - update
-        - patch
     - apiGroups:
         - ""
       resources:
@@ -335,6 +333,12 @@ rules:
       verbs:
         - create
         - list
+        - get
+    - apiGroups:
+        - ""
+      resources:
+        - nodes
+      verbs:
         - get
     - apiGroups:
         - ""
@@ -792,6 +796,7 @@ rules:
         - virtualmachineinstances/reset
         - virtualmachineinstances/sev/setupsession
         - virtualmachineinstances/sev/injectlaunchsecret
+        - virtualmachineinstances/evacuate/cancel
       verbs:
         - update
     - apiGroups:
@@ -810,6 +815,7 @@ rules:
         - virtualmachines/addvolume
         - virtualmachines/removevolume
         - virtualmachines/memorydump
+        - virtualmachines/evacuate/cancel
       verbs:
         - update
     - apiGroups:
@@ -950,6 +956,7 @@ rules:
         - virtualmachineinstances/reset
         - virtualmachineinstances/sev/setupsession
         - virtualmachineinstances/sev/injectlaunchsecret
+        - virtualmachineinstances/evacuate/cancel
       verbs:
         - update
     - apiGroups:
@@ -968,6 +975,7 @@ rules:
         - virtualmachines/addvolume
         - virtualmachines/removevolume
         - virtualmachines/memorydump
+        - virtualmachines/evacuate/cancel
       verbs:
         - update
     - apiGroups:

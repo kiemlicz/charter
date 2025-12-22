@@ -1,34 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    labels:
-        kubevirt.io: virt-operator
-    name: virt-operator
+    labels: {{- include "kubevirt.labels" . | nindent 8 }}
+{{ .Values.kubevirtOperator.deployment.extraLabels | toYaml | nindent 8 }}
+    name: '{{ include "kubevirt.fullname" . }}-virt-operator'
     namespace: {{ .Release.Namespace }}
 spec:
-    replicas: {{ .Values.kubevirtOperator.replicas }}
+    replicas: {{ .Values.kubevirtOperator.deployment.replicas }}
     selector:
-        matchLabels:
-            kubevirt.io: virt-operator
+        matchLabels: {{- include "kubevirt.selectorLabels" . | nindent 12 }}
     strategy:
         type: RollingUpdate
     template:
         metadata:
-            annotations:
-                openshift.io/required-scc: restricted-v2
-            labels:
-                kubevirt.io: virt-operator
-                name: virt-operator
-                prometheus.kubevirt.io: "true"
+            annotations: {{ .Values.kubevirtOperator.deployment.podAnnotations | toYaml | nindent 16 }}
+            labels: {{- include "kubevirt.labels" . | nindent 16 }}
+{{ .Values.kubevirtOperator.deployment.podLabels | toYaml | nindent 16 }}
             name: virt-operator
         spec:
-            affinity: {{ .Values.kubevirtOperator.affinity | toYaml | nindent 16 }}
+            affinity: {{ .Values.kubevirtOperator.deployment.affinity | toYaml | nindent 16 }}
             containers:
-                - args: {{ .Values.kubevirtOperator.args | toYaml | nindent 20 }}
-                  command: {{ .Values.kubevirtOperator.command | toYaml | nindent 20 }}
-                  env: {{ .Values.kubevirtOperator.env | toYaml | nindent 20 }}
-                  image: {{ .Values.kubevirtOperator.image.repository }}:{{ .Values.kubevirtOperator.image.tag }}
-                  imagePullPolicy: {{ .Values.kubevirtOperator.imagePullPolicy }}
+                - args: {{ .Values.kubevirtOperator.deployment.args | toYaml | nindent 20 }}
+                  command: {{ .Values.kubevirtOperator.deployment.command | toYaml | nindent 20 }}
+                  env: {{ .Values.kubevirtOperator.deployment.env | toYaml | nindent 20 }}
+                  image: {{ .Values.kubevirtOperator.deployment.image.repository }}:{{ .Values.kubevirtOperator.deployment.image.tag }}
+                  imagePullPolicy: {{ .Values.kubevirtOperator.deployment.imagePullPolicy }}
                   livenessProbe:
                     httpGet:
                         path: /metrics
@@ -51,13 +47,13 @@ spec:
                         scheme: HTTPS
                     initialDelaySeconds: 5
                     timeoutSeconds: 10
-                  resources: {{ .Values.kubevirtOperator.resources | toYaml | nindent 20 }}
-                  securityContext: {{ .Values.kubevirtOperator.securityContext | toYaml | nindent 20 }}
+                  resources: {{ .Values.kubevirtOperator.deployment.resources | toYaml | nindent 20 }}
+                  securityContext: {{ .Values.kubevirtOperator.deployment.securityContext | toYaml | nindent 20 }}
                   terminationMessagePolicy: FallbackToLogsOnError
-                  volumeMounts: {{ .Values.kubevirtOperator.volumeMounts | toYaml | nindent 20 }}
-            nodeSelector: {{ .Values.kubevirtOperator.nodeSelector | toYaml | nindent 16 }}
-            priorityClassName: kubevirt-cluster-critical
-            securityContext: {{ .Values.kubevirtOperator.podSecurityContext | toYaml | nindent 16 }}
-            serviceAccountName: kubevirt-operator
-            tolerations: {{ .Values.kubevirtOperator.tolerations | toYaml | nindent 16 }}
-            volumes: {{ .Values.kubevirtOperator.volumes | toYaml | nindent 16 }}
+                  volumeMounts: {{ .Values.kubevirtOperator.deployment.volumeMounts | toYaml | nindent 20 }}
+            nodeSelector: {{ .Values.kubevirtOperator.deployment.nodeSelector | toYaml | nindent 16 }}
+            priorityClassName: '{{ include "kubevirt.fullname" . }}-kubevirt-cluster-critical'
+            securityContext: {{ .Values.kubevirtOperator.deployment.podSecurityContext | toYaml | nindent 16 }}
+            serviceAccountName: '{{ include "kubevirt.fullname" . }}-kubevirt-operator'
+            tolerations: {{ .Values.kubevirtOperator.deployment.tolerations | toYaml | nindent 16 }}
+            volumes: {{ .Values.kubevirtOperator.deployment.volumes | toYaml | nindent 16 }}

@@ -3,5 +3,5 @@ description: This priority class should be used for core kubevirt components onl
 globalDefault: false
 kind: PriorityClass
 metadata:
-    name: kubevirt-cluster-critical
+    name: '{{ include "kubevirt.fullname" . }}-kubevirt-cluster-critical'
 value: 1000000000
