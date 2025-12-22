@@ -52,7 +52,7 @@ spec:
                   terminationMessagePolicy: FallbackToLogsOnError
                   volumeMounts: {{ .Values.kubevirtOperator.deployment.volumeMounts | toYaml | nindent 20 }}
             nodeSelector: {{ .Values.kubevirtOperator.deployment.nodeSelector | toYaml | nindent 16 }}
-            priorityClassName: '{{ include "kubevirt.fullname" . }}-kubevirt-cluster-critical'
+            priorityClassName: kubevirt-cluster-critical
             securityContext: {{ .Values.kubevirtOperator.deployment.podSecurityContext | toYaml | nindent 16 }}
             serviceAccountName: '{{ include "kubevirt.fullname" . }}-kubevirt-operator'
             tolerations: {{ .Values.kubevirtOperator.deployment.tolerations | toYaml | nindent 16 }}

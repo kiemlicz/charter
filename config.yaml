@@ -143,7 +143,7 @@ githubReleases:
           kind: Deployment
         # name change
         - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
-          reject: "CustomResourceDefinition|KubeVirt"
+          reject: "CustomResourceDefinition|KubeVirt|PriorityClass" # PriorityClass name is used in virt-handler and seems hardcoded hence not changing it
         - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}"'
           kind: "KubeVirt"
         - expression: '.roleRef.name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
@@ -151,8 +151,6 @@ githubReleases:
         - expression: '.subjects[] .name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
           kind: "ClusterRoleBinding|RoleBinding"
         - expression: '.spec.template.spec.serviceAccountName |= "{{ include \"kubevirt.fullname\" . }}-" + .'
-          kind: Deployment
-        - expression: '.spec.template.spec.priorityClassName |= "{{ include \"kubevirt.fullname\" . }}-" + .'
           kind: Deployment
         # this expression and another are tightly coupled to each other, must go last as break YAML structure
         - expression: 'select(.metadata.name | test(".*kubevirt.io:operator$")) .metadata.labels |= "{{ .Values.kubevirt.role.extraLabels }}"'
