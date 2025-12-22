@@ -49,7 +49,7 @@ func CreatePr(ctx context.Context, prSettings *common.PullRequest, srcBranch str
 
 func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, existingVersion, existingAppVersion string) (*common.Manifests, error) {
 	client := github.NewClient(nil)
-	releaseData, err := downloadReleaseMeta(ctx, client, releaseConfig)
+	releaseData, err := downloadReleaseMeta(ctx, client, releaseConfig.Owner, releaseConfig.Repo)
 	if err != nil {
 		common.Log.Errorf("Failed to download release metadata for %s: %v", releaseConfig.Repo, err)
 		return nil, err
@@ -58,7 +58,7 @@ func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, ex
 	common.Log.Infof("Latest release for %s: %s", releaseConfig.Repo, *releaseVersion)
 
 	if existingAppVersion == *releaseVersion {
-		common.Log.Infof("Helm chart %s is already up to date with version %s", releaseConfig.ChartName, existingAppVersion)
+		common.Log.Infof("Helm chart %s is already up to date with version %s", releaseConfig.Helm.ChartName, existingAppVersion)
 		return nil, nil
 	}
 	version, err := takeNewerVersion(existingVersion, *releaseVersion) //todo add test for this
@@ -68,7 +68,7 @@ func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, ex
 		common.Log.Errorf("Failed to download assets for release %s: %v", releaseConfig.Repo, err)
 		return nil, err
 	}
-	manifests, err := common.NewManifests(assetsData, version, *releaseVersion, &releaseConfig.AddValues, &releaseConfig.AddCrdValues)
+	manifests, err := common.NewManifests(assetsData, version, *releaseVersion, &releaseConfig.Helm.AddValues, &releaseConfig.Helm.AddCrdValues)
 	if err != nil {
 		common.Log.Errorf("Failed to collect manifests for release %s: %v", releaseConfig.Repo, err)
 		return nil, err
@@ -91,8 +91,8 @@ func takeNewerVersion(existingVersion, remoteVersion string) (*semver.Version, e
 	}
 }
 
-func downloadReleaseMeta(ctx context.Context, client *github.Client, release *common.GithubRelease) (*github.RepositoryRelease, error) {
-	repoRelease, response, err := client.Repositories.GetLatestRelease(ctx, release.Owner, release.Repo)
+func downloadReleaseMeta(ctx context.Context, client *github.Client, owner, repo string) (*github.RepositoryRelease, error) {
+	repoRelease, response, err := client.Repositories.GetLatestRelease(ctx, owner, repo)
 	if err != nil || response.StatusCode != http.StatusOK {
 		if response != nil {
 			err = fmt.Errorf("failed to download release: %v, status: %d", err, response.StatusCode)
@@ -103,8 +103,8 @@ func downloadReleaseMeta(ctx context.Context, client *github.Client, release *co
 	return repoRelease, nil
 }
 
-func downloadReleaseAsset(ctx context.Context, client *github.Client, release *common.GithubRelease, asset *github.ReleaseAsset) ([]byte, error) {
-	reader, _, err := client.Repositories.DownloadReleaseAsset(ctx, release.Owner, release.Repo, asset.GetID(), client.Client())
+func downloadReleaseAsset(ctx context.Context, client *github.Client, owner string, repo string, asset *github.ReleaseAsset) ([]byte, error) {
+	reader, _, err := client.Repositories.DownloadReleaseAsset(ctx, owner, repo, asset.GetID(), client.Client())
 	if err != nil {
 		common.Log.Errorf("Failed to download release asset: %v", err)
 		return nil, err
@@ -128,7 +128,7 @@ func downloadAssets(ctx context.Context, client *github.Client, releaseConfig *c
 
 	for _, asset := range releaseData.Assets {
 		if _, ok := assetsData[asset.GetName()]; ok {
-			data, err := downloadReleaseAsset(ctx, client, releaseConfig, asset)
+			data, err := downloadReleaseAsset(ctx, client, releaseConfig.Owner, releaseConfig.Repo, asset)
 			if err != nil {
 				common.Log.Errorf("Failed to download asset %s for release %s: %v", asset.GetName(), releaseConfig.Repo, err)
 				return nil, err

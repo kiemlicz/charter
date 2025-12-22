@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/kiemlicz/charter/internal/common"
-	"github.com/kiemlicz/charter/internal/git"
 	"github.com/kiemlicz/charter/internal/packager"
+	"github.com/kiemlicz/charter/internal/updater/git"
 	ghup "github.com/kiemlicz/charter/internal/updater/github"
 )
 
@@ -50,28 +50,19 @@ func UpdateMode(config *common.Config) error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			modifiedManifests, err := packager.ProcessManifests(ctx, &release, &config.Helm)
+			charts, err := packager.FetchAndUpdate(ctx, &release, &config.Helm)
 			if err != nil {
 				common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
 				createdCharts <- nil
-				return
-			} else if modifiedManifests == nil {
-				createdCharts <- nil
-				return
+			} else {
+				common.Log.Infof("Successfully created Helm chart for release: %s", release.Repo)
+				createdCharts <- charts
 			}
-
-			charts, err := packager.NewHelmCharts(&config.Helm, release.ChartName, modifiedManifests)
-			if err != nil {
-				createdCharts <- nil
-				return
-			}
-			common.Log.Infof("Successfully created Helm chart for release: %s", release.Repo)
-			createdCharts <- charts
 		}()
 	}
 
 	wg.Wait()
-	close(createdCharts)
+	close(createdCharts) //so that range below completes
 
 	if config.Offline {
 		common.Log.Infof("Offline mode, skipping git operations")

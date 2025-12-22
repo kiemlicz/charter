@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
+	"helm.sh/helm/v3/pkg/chart"
 )
 
 const (
@@ -52,9 +53,13 @@ type HelmSettings struct {
 }
 
 type GithubRelease struct {
-	Owner         string         `koanf:"owner"`
-	Repo          string         `koanf:"repo"`
-	Assets        []string       `koanf:"assets"`
+	Owner  string   `koanf:"owner"`
+	Repo   string   `koanf:"repo"`
+	Assets []string `koanf:"assets"`
+	Helm   HelmOps  `koanf:"helm"`
+}
+
+type HelmOps struct {
 	ChartName     string         `koanf:"chartName"`
 	Drop          []string       `koanf:"drop"`
 	Modifications []Modification `koanf:"modifications"`
@@ -63,7 +68,8 @@ type GithubRelease struct {
 }
 
 type Modification struct {
-	Expression     string   `koanf:"expression"`     // yq expression to modify manifest
+	Expression     string   `koanf:"expression"`     // yq expression to modify manifest, when using TextRegex this is a regex replacement expression
+	TextRegex      string   `koanf:"textRegex"`      // regex to change the keys under path
 	ValuesSelector []string `koanf:"valuesSelector"` // cuts selected section and moves to Values
 	Kind           string   `koanf:"kind"`           // if set, apply modification only to resources of this kind
 	Reject         string   `koanf:"reject"`         // don't apply for these
@@ -115,7 +121,17 @@ func NewManifests(assetsData *map[string][]byte, version *semver.Version, appVer
 func NewYqModification(expression string) *Modification {
 	return &Modification{
 		Expression:     expression,
+		TextRegex:      "",
 		ValuesSelector: []string{},
 		Kind:           "",
+		Reject:         "",
 	}
+}
+
+type ChartData struct {
+	Name       string
+	Version    semver.Version
+	AppVersion string
+	Templates  []*chart.File
+	Values     map[string]any
 }

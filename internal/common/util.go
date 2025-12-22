@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"regexp"
 	"strings"
 
 	kyaml "github.com/knadh/koanf/parsers/yaml"
@@ -143,4 +144,13 @@ func ExtractYamls(assetData []byte) (*[]map[string]any, error) {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return !errors.Is(err, os.ErrNotExist)
+}
+
+func Matches(expr string, text string) (bool, error) {
+	rc, err := regexp.Compile(expr)
+	if err != nil {
+		Log.Errorf("Failed to compile regex '%s': %v", expr, err)
+		return false, err
+	}
+	return rc.MatchString(text), nil
 }
