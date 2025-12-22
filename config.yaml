@@ -336,9 +336,10 @@ githubReleases:
           valuesSelector:
             - ".metadata.labels"
           kind: "^Role$"
+        # merge giving precedence to standard labels so that duplicates are avoided
         - expression: |-
-            {{- include "cdi.labels" . | nindent 8 }}
-            {{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
+            {{ $$labels := merge (include "cdi.labels" . | fromYaml) .Values.cdiOperator.role.extraLabels -}}
+            {{ $$labels | toYaml | nindent 8 }}
           textRegex: "{{ .Values.cdiOperator.role.extraLabels }}"
           kind: "^Role$"
         - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels }}"'
@@ -346,8 +347,8 @@ githubReleases:
 #            - ".metadata.labels" # they are the same as above
           kind: "^RoleBinding$"
         - expression: |-
-            {{- include "cdi.labels" . | nindent 8 }}
-            {{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
+            {{ $$labels := merge (include "cdi.labels" . | fromYaml) .Values.cdiOperator.role.extraLabels -}}
+            {{ $$labels | toYaml | nindent 8 }}
           textRegex: "{{ .Values.cdiOperator.role.extraLabels }}"
           kind: "^RoleBinding$"
         - expression: '.metadata.labels |= "{{ .Values.cdiOperator.deployment.extraLabels }}"'

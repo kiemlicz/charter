@@ -1,8 +1,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-    labels: {{- include "cdi.labels" . | nindent 8 }}
-{{ .Values.cdiOperator.role.extraLabels | toYaml | nindent 8 }}
+    labels: {{ $labels := merge (include "cdi.labels" . | fromYaml) .Values.cdiOperator.role.extraLabels -}}
+{{ $labels | toYaml | nindent 8 }}
     name: '{{ include "cdi.fullname" . }}-cdi-operator'
     namespace: {{ .Release.Namespace }}
 roleRef:
