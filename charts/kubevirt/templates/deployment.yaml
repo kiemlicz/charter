@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
     labels: {{- include "kubevirt.labels" . | nindent 8 }}
 {{ .Values.kubevirtOperator.deployment.extraLabels | toYaml | nindent 8 }}
-    name: '{{ include "kubevirt.fullname" . }}-virt-operator'
+    name: virt-operator
     namespace: {{ .Release.Namespace }}
 spec:
     replicas: {{ .Values.kubevirtOperator.deployment.replicas }}

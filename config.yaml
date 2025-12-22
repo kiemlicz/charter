@@ -143,7 +143,7 @@ githubReleases:
           kind: Deployment
         # name change
         - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
-          reject: "CustomResourceDefinition|KubeVirt|PriorityClass" # PriorityClass name is used in virt-handler and seems hardcoded hence not changing it
+          reject: "CustomResourceDefinition|KubeVirt|PriorityClass|Deployment" # PriorityClass name is used in virt-handler and seems hardcoded hence not changing it. Deployment too
         - expression: '.metadata.name |= "{{ include \"kubevirt.fullname\" . }}"'
           kind: "KubeVirt"
         - expression: '.roleRef.name |= "{{ include \"kubevirt.fullname\" . }}-" + .'
