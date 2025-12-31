@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,6 +19,7 @@ import (
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/lint"
 	"helm.sh/helm/v3/pkg/registry"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 var ErrVersionExists = errors.New("chart version already exists in registry")
@@ -197,7 +199,7 @@ func Push(packagedPath, remote string) (string, error) {
 
 func versionExistsInRegistry(rc *registry.Client, ref, version string) (bool, error) {
 	tags, err := rc.Tags(strings.TrimPrefix(ref, "oci://"))
-	if err != nil {
+	if err != nil && !isNotFound(err) {
 		return false, fmt.Errorf("failed to fetch tags: %w", err)
 	}
 	for _, tag := range tags {
@@ -206,6 +208,15 @@ func versionExistsInRegistry(rc *registry.Client, ref, version string) (bool, er
 		}
 	}
 	return false, nil
+}
+
+func isNotFound(err error) bool {
+	var er *errcode.ErrorResponse
+	if errors.As(err, &er) {
+		common.Log.Infof("Previous Chart version not found in registry: %s, will create new", er.Error())
+		return er.StatusCode == http.StatusNotFound
+	}
+	return false
 }
 
 func clearTemplates(path string) error {
