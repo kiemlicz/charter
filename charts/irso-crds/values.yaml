@@ -1,0 +1,4 @@
+annotations:
+    cert-manager.io/inject-ca-from: ironic-standalone-operator-system/ironic-standalone-operator-serving-cert
+    controller-gen.kubebuilder.io/version: v0.17.0
+    helm.sh/resource-policy: keep

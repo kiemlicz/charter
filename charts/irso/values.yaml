@@ -1,0 +1,32 @@
+certificate:
+    dnsNames:
+        - ironic-standalone-operator-webhook-service.ironic-standalone-operator-system.svc
+        - ironic-standalone-operator-webhook-service.ironic-standalone-operator-system.svc.cluster.local
+operator:
+    deployment:
+        image:
+            repository: quay.io/metal3-io/ironic-standalone-operator
+            tag: v0.7.0
+        podSecurityContext:
+            runAsNonRoot: true
+            seccompProfile:
+                type: RuntimeDefault
+        replicas: 1
+        resources:
+            limits:
+                cpu: 500m
+                memory: 128Mi
+            requests:
+                cpu: 10m
+                memory: 64Mi
+        securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+                drop:
+                    - ALL
+            privileged: false
+            runAsGroup: 65532
+            runAsUser: 65532
+    webhook:
+        annotations:
+            cert-manager.io/inject-ca-from: ironic-standalone-operator-system/ironic-standalone-operator-serving-cert

@@ -383,3 +383,73 @@ githubReleases:
           customizeComponents: {}
           priorityClass: ""
           uninstallStrategy: ""
+  - owner: "metal3-io"
+    repo: "ironic-standalone-operator"
+    assets:
+      - "install.yaml"
+    helm:
+      chartName: "irso"
+      drop:
+        - namespace
+        - namespaces
+      addCrdValues:
+        annotations:
+          "helm.sh/resource-policy": "keep"
+      modifications:
+        - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
+          valuesSelector:
+            - ".metadata.annotations"
+          kind: CustomResourceDefinition
+        - expression: '.spec.conversion.webhook.clientConfig.service.namespace |= "{{ .Release.Namespace }}"'
+          kind: CustomResourceDefinition
+        - expression: '.metadata.namespace |= "{{ .Release.Namespace }}"'
+          reject: "ClusterRole|ClusterRoleBinding|PriorityClass|CustomResourceDefinition|ValidatingWebhookConfiguration"
+        - expression: '(.subjects[] | select(.name == "ironic-standalone-operator-controller-manager") .namespace) = "{{ .Release.Namespace }}"'
+          kind: "^ClusterRoleBinding$|^RoleBinding$"
+        - expression: '.spec.dnsNames |= "{{ .Values.certificate.dnsNames | toYaml | nindent 8 }}"'
+          valuesSelector:
+            - ".spec.dnsNames"
+          kind: "^Certificate$"
+        - expression: '.metadata.annotations |= "{{ .Values.operator.webhook.annotations | toYaml | nindent 8 }}"'
+          valuesSelector:
+            - ".metadata.annotations"
+          kind: "^ValidatingWebhookConfiguration$"
+        - expression: '(.webhooks[] | select(.name == "validate-ironic.ironic.metal3.io") .clientConfig.service.namespace) = "{{ .Release.Namespace }}"'
+          kind: "^ValidatingWebhookConfiguration$"
+        - expression: '.spec.replicas |= "{{ .Values.operator.deployment.replicas }}"'
+          valuesSelector:
+            - ".spec.replicas"
+          kind: Deployment
+        - expression: '.spec.template.spec.nodeSelector |= "{{ .Values.operator.deployment.nodeSelector | toYaml | nindent 16 }}"'
+          valuesSelector:
+            - ".spec.template.spec.nodeSelector"
+          kind: Deployment
+        - expression: '.spec.template.spec.tolerations |= "{{ .Values.operator.deployment.tolerations | toYaml | nindent 16 }}"'
+          valuesSelector:
+            - ".spec.template.spec.tolerations"
+          kind: Deployment
+        - expression: '.spec.template.spec.affinity |= "{{ .Values.operator.deployment.affinity | toYaml | nindent 16 }}"'
+          valuesSelector:
+            - ".spec.template.spec.affinity"
+          kind: Deployment
+        - expression: '.spec.template.spec.containers[0].resources |= "{{ .Values.operator.deployment.resources | toYaml | nindent 20 }}"'
+          valuesSelector:
+            - ".spec.template.spec.containers[0].resources"
+          kind: Deployment
+        - expression: '.spec.template.spec.containers[0].securityContext |= "{{ .Values.operator.deployment.securityContext | toYaml | nindent 20 }}"'
+          valuesSelector:
+            - ".spec.template.spec.containers[0].securityContext"
+          kind: Deployment
+        - expression: '.spec.template.spec.securityContext |= "{{ .Values.operator.deployment.podSecurityContext | toYaml | nindent 16 }}"'
+          valuesSelector:
+            - ".spec.template.spec.securityContext"
+          kind: Deployment
+        - expression: '.spec.template.spec.containers[0].image |= "{{ .Values.operator.deployment.image.repository }}:{{ .Values.operator.deployment.image.tag }}"'
+          valuesSelector:
+            - ".spec.template.spec.containers[0].image | split(\":\") | .[0]"
+            - ".spec.template.spec.containers[0].image | split(\":\") | .[1]"
+          kind: Deployment
+        - expression: '.spec.template.spec.containers[0].imagePullPolicy |= "{{ .Values.operator.deployment.imagePullPolicy }}"'
+          valuesSelector:
+            - ".spec.template.spec.containers[0].imagePullPolicy"
+          kind: Deployment
