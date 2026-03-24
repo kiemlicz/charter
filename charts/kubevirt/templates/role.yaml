@@ -3,7 +3,7 @@ kind: Role
 metadata:
     labels: {{- include "kubevirt.labels" . | nindent 8 }}
 {{ .Values.kubevirtOperator.commonLabels | toYaml | nindent 8 }}
-    name: '{{ include "kubevirt.fullname" . }}-kubevirt-operator'
+    name: kubevirt-operator
     namespace: {{ .Release.Namespace }}
 rules:
     - apiGroups:

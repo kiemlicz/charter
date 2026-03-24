@@ -3,7 +3,7 @@ kind: ClusterRole
 metadata:
     labels: {{- include "kubevirt.labels" . | nindent 8 }}
 {{ .Values.kubevirt.role.extraLabels | toYaml | nindent 8 }}
-    name: '{{ include "kubevirt.fullname" . }}-kubevirt.io:operator'
+    name: kubevirt.io:operator
 rules:
     - apiGroups:
         - kubevirt.io
@@ -25,7 +25,7 @@ kind: ClusterRole
 metadata:
     labels: {{- include "kubevirt.labels" . | nindent 8 }}
 {{ .Values.kubevirtOperator.commonLabels | toYaml | nindent 8 }}
-    name: '{{ include "kubevirt.fullname" . }}-kubevirt-operator'
+    name: kubevirt-operator
 rules:
     - apiGroups:
         - kubevirt.io

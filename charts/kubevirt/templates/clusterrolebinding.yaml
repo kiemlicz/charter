@@ -4,12 +4,12 @@ metadata:
     labels:
         {{- include "kubevirt.labels" . | nindent 8 }}
 {{ .Values.kubevirtOperator.commonLabels | toYaml | nindent 8 }}
-    name: '{{ include "kubevirt.fullname" . }}-kubevirt-operator'
+    name: kubevirt-operator
 roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: ClusterRole
-    name: '{{ include "kubevirt.fullname" . }}-kubevirt-operator'
+    name: kubevirt-operator
 subjects:
     - kind: ServiceAccount
-      name: '{{ include "kubevirt.fullname" . }}-kubevirt-operator'
+      name: kubevirt-operator
       namespace: {{ .Release.Namespace }}

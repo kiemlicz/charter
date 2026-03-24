@@ -3,4 +3,4 @@ appVersion: v1.7.2
 description: A Helm Chart for kubevirt-crds
 name: kubevirt-crds
 type: application
-version: 1.7.2
+version: 1.7.3-rc.1
