@@ -1,6 +1,0 @@
-apiVersion: v2
-appVersion: v0.7.0
-description: A Helm Chart for irso
-name: irso
-type: application
-version: 0.7.0
