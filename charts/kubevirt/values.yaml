@@ -64,18 +64,18 @@ kubevirtOperator:
             - virt-operator
         env:
             - name: VIRT_OPERATOR_IMAGE
-              value: quay.io/kubevirt/virt-operator:v1.7.2
+              value: quay.io/kubevirt/virt-operator:v1.8.0
             - name: WATCH_NAMESPACE
               valueFrom:
                 fieldRef:
                     fieldPath: metadata.annotations['olm.targetNamespaces']
             - name: KUBEVIRT_VERSION
-              value: v1.7.2
+              value: v1.8.0
         extraLabels:
             kubevirt.io: virt-operator
         image:
             repository: quay.io/kubevirt/virt-operator
-            tag: v1.7.2
+            tag: v1.8.0
         imagePullPolicy: IfNotPresent
         nodeSelector:
             kubernetes.io/os: linux
