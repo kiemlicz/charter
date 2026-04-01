@@ -1,3 +1,3 @@
 annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.17.2
     helm.sh/resource-policy: keep
