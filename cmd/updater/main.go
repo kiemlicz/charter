@@ -20,17 +20,19 @@ func main() {
 	config, err := common.SetupConfig()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
-		return
 	}
 	common.Setup(config.Log.Level)
 
-	if config.ModeOfOperation == common.ModeUpdate {
+	switch config.ModeOfOperation {
+	case common.ModeUpdate:
 		err = UpdateMode(config)
-	} else {
+	case common.ModePublish:
 		err = PublishMode(config)
+	default:
+		err = fmt.Errorf("unsupported mode: %s", config.ModeOfOperation)
 	}
 	if err != nil {
-		common.Log.Fatalf("Mode %s failed: %v", config.ModeOfOperation, err)
+		common.Log.Errorf("Mode %s failed: %v", config.ModeOfOperation, err)
 		os.Exit(1)
 	}
 }
