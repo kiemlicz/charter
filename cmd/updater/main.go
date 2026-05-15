@@ -12,6 +12,7 @@ import (
 
 	"github.com/kiemlicz/charter/internal/common"
 	"github.com/kiemlicz/charter/internal/packager"
+	"github.com/kiemlicz/charter/internal/updater/chart"
 	"github.com/kiemlicz/charter/internal/updater/git"
 	ghup "github.com/kiemlicz/charter/internal/updater/github"
 )
@@ -39,47 +40,55 @@ func main() {
 
 func UpdateMode(config *common.Config) error {
 	mainCtx := context.Background()
-	var wg sync.WaitGroup
-	createdCharts := make(chan *packager.HelmizedManifests, len(config.Releases))
+
+	sources, err := buildSources(config)
+	if err != nil {
+		return fmt.Errorf("failed to build manifest sources: %w", err)
+	}
+	if len(sources) == 0 {
+		common.Log.Warnf("No sources configured, nothing to update")
+		return nil
+	}
 
 	gitRepo, err := git.NewClient(".")
 	if err != nil {
 		return err
 	}
 
-	for _, release := range config.Releases {
-		ctx, cancel := context.WithTimeout(mainCtx, 30*time.Second)
-		defer cancel()
+	// Phase 1: fetch + prepare charts in parallel.
+	createdCharts := make(chan *packager.HelmizedManifests, len(sources))
+	var wg sync.WaitGroup
+	for _, src := range sources {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			charts, err := packager.FetchAndUpdate(ctx, &release, &config.Helm)
+			ctx, cancel := context.WithTimeout(mainCtx, 30*time.Second)
+			defer cancel()
+			charts, err := packager.FetchAndUpdate(ctx, src, &config.Helm)
 			if err != nil {
-				common.Log.Errorf("Error generating Chart for release %s: %v", release.Repo, err)
+				common.Log.Errorf("Error generating chart for %s: %v", src.ChartName(), err)
 				createdCharts <- nil
 			} else {
-				common.Log.Infof("Successfully created Helm chart for release: %s", release.Repo)
+				common.Log.Infof("Successfully created Helm chart: %s", src.ChartName())
 				createdCharts <- charts
 			}
 		}()
 	}
-
 	wg.Wait()
-	close(createdCharts) //so that range below completes
+	close(createdCharts)
 
 	if config.Offline {
 		common.Log.Infof("Offline mode, skipping git operations")
 		return nil
 	}
 
+	// Phase 2: commit / push / PR - must be serial to avoid git state conflicts.
 	timeoutCtx, cancel := context.WithTimeout(mainCtx, 30*time.Second)
 	defer cancel()
-	//commit starts once we receive all charts and workdir is not externally modified
 	for charts := range createdCharts {
 		if charts == nil {
 			continue
 		}
-		// naming by main chart
 		branch := fmt.Sprintf("update/%s-%s", charts.Chart.Metadata.Name, charts.AppVersion())
 
 		exists, err := gitRepo.BranchExists(branch)
@@ -90,21 +99,16 @@ func UpdateMode(config *common.Config) error {
 			common.Log.Warnf("Branch %s already exists: close it or merge it, then re-try, skipping", branch)
 			continue
 		}
-		err = gitRepo.CreateBranch(config.PullRequest.DefaultBranch, branch)
-		if err != nil {
+		if err = gitRepo.CreateBranch(config.PullRequest.DefaultBranch, branch); err != nil {
 			return err
 		}
-		err = gitRepo.Commit(charts)
-		if err != nil {
+		if err = gitRepo.Commit(charts); err != nil {
 			return err
 		}
-		err = gitRepo.Push(timeoutCtx, &config.PullRequest, branch)
-		if err != nil {
+		if err = gitRepo.Push(timeoutCtx, &config.PullRequest, branch); err != nil {
 			return err
 		}
-
-		err = ghup.CreatePr(timeoutCtx, &config.PullRequest, branch)
-		if err != nil {
+		if err = ghup.CreatePr(timeoutCtx, &config.PullRequest, branch); err != nil {
 			return err
 		}
 	}
@@ -140,4 +144,29 @@ func PublishMode(config *common.Config) error {
 		}
 	}
 	return nil
+}
+
+// buildSources converts the sources[] config into ManifestSource implementations.
+func buildSources(config *common.Config) ([]common.ManifestSource, error) {
+	sources := make([]common.ManifestSource, 0, len(config.Sources))
+
+	for i := range config.Sources {
+		spec := &config.Sources[i]
+		switch spec.Type {
+		case common.SourceTypeGithub:
+			if spec.Github == nil {
+				return nil, fmt.Errorf("source %d has type 'github' but no 'github' block", i)
+			}
+			sources = append(sources, ghup.NewGithubSource(spec.Github, &spec.Helm))
+		case common.SourceTypeHelmChart:
+			if spec.HelmChart == nil {
+				return nil, fmt.Errorf("source %d has type 'helmChart' but no 'helmChart' block", i)
+			}
+			sources = append(sources, chart.NewHelmChartSource(spec.HelmChart, &spec.Helm))
+		default:
+			return nil, fmt.Errorf("source %d has unknown type: %q", i, spec.Type)
+		}
+	}
+
+	return sources, nil
 }

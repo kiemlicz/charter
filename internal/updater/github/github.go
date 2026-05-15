@@ -11,6 +11,23 @@ import (
 	"github.com/kiemlicz/charter/internal/common"
 )
 
+// GithubSource implements common.ManifestSource backed by a GitHub release.
+type GithubSource struct {
+	cfg  *common.GithubSourceConfig
+	helm *common.HelmOps
+}
+
+// NewGithubSource constructs a GithubSource from the typed config blocks.
+func NewGithubSource(cfg *common.GithubSourceConfig, helm *common.HelmOps) *GithubSource {
+	return &GithubSource{cfg: cfg, helm: helm}
+}
+
+func (s *GithubSource) ChartName() string        { return s.helm.ChartName }
+func (s *GithubSource) HelmOps() *common.HelmOps { return s.helm }
+func (s *GithubSource) Fetch(ctx context.Context, currentVersion, currentAppVersion string) (*common.Manifests, error) {
+	return FetchManifests(ctx, s.cfg, s.helm, currentVersion, currentAppVersion)
+}
+
 // CreatePr creates a Pull Request into default branch
 func CreatePr(ctx context.Context, prSettings *common.PullRequest, srcBranch string) error {
 	defaultBranch := prSettings.DefaultBranch
@@ -47,30 +64,36 @@ func CreatePr(ctx context.Context, prSettings *common.PullRequest, srcBranch str
 	return nil
 }
 
-func FetchManifests(ctx context.Context, releaseConfig *common.GithubRelease, existingVersion, existingAppVersion string) (*common.Manifests, error) {
+// FetchManifests downloads the latest GitHub release assets and parses them into Manifests.
+// Returns (nil, nil) when the chart is already at the latest version.
+func FetchManifests(ctx context.Context, cfg *common.GithubSourceConfig, helmOps *common.HelmOps, existingVersion, existingAppVersion string) (*common.Manifests, error) {
 	client := github.NewClient(nil)
-	releaseData, err := downloadReleaseMeta(ctx, client, releaseConfig.Owner, releaseConfig.Repo)
+	releaseData, err := downloadReleaseMeta(ctx, client, cfg.Owner, cfg.Repo)
 	if err != nil {
-		common.Log.Errorf("Failed to download release metadata for %s: %v", releaseConfig.Repo, err)
+		common.Log.Errorf("Failed to download release metadata for %s: %v", cfg.Repo, err)
 		return nil, err
 	}
 	releaseVersion := releaseData.TagName
-	common.Log.Infof("Latest release for %s: %s", releaseConfig.Repo, *releaseVersion)
+	common.Log.Infof("Latest release for %s: %s", cfg.Repo, *releaseVersion)
 
 	if existingAppVersion == *releaseVersion {
-		common.Log.Infof("Helm chart %s is already up to date with version %s", releaseConfig.Helm.ChartName, existingAppVersion)
+		common.Log.Infof("Helm chart %s is already up to date with version %s", helmOps.ChartName, existingAppVersion)
 		return nil, nil
 	}
-	version, err := takeNewerVersion(existingVersion, *releaseVersion) //todo add test for this
 
-	assetsData, err := downloadAssets(ctx, client, releaseConfig, releaseData)
+	version, err := takeNewerVersion(existingVersion, *releaseVersion)
 	if err != nil {
-		common.Log.Errorf("Failed to download assets for release %s: %v", releaseConfig.Repo, err)
+		return nil, fmt.Errorf("version resolution failed for %s: %w", cfg.Repo, err)
+	}
+
+	assetsData, err := downloadAssets(ctx, client, cfg, releaseData)
+	if err != nil {
+		common.Log.Errorf("Failed to download assets for release %s: %v", cfg.Repo, err)
 		return nil, err
 	}
-	manifests, err := common.NewManifests(assetsData, version, *releaseVersion, &releaseConfig.Helm.AddValues, &releaseConfig.Helm.AddCrdValues)
+	manifests, err := common.NewManifests(assetsData, version, *releaseVersion, &helmOps.AddValues, &helmOps.AddCrdValues)
 	if err != nil {
-		common.Log.Errorf("Failed to collect manifests for release %s: %v", releaseConfig.Repo, err)
+		common.Log.Errorf("Failed to collect manifests for release %s: %v", cfg.Repo, err)
 		return nil, err
 	}
 	return manifests, nil
@@ -80,15 +103,17 @@ func takeNewerVersion(existingVersion, remoteVersion string) (*semver.Version, e
 	semverExisting, _ := semver.NewVersion(existingVersion)
 	semverRemote, err := semver.NewVersion(remoteVersion)
 	if err != nil {
+		if semverExisting == nil {
+			return nil, fmt.Errorf("neither existing version %q nor remote version %q are valid SemVer", existingVersion, remoteVersion)
+		}
 		common.Log.Warnf("Remote version %s is not valid SemVer: %v, will use existing Chart's version: %s", remoteVersion, err, existingVersion)
 		return semverExisting, nil
 	}
 
 	if semverRemote.Compare(semverExisting) < 0 {
 		return semverExisting, nil
-	} else {
-		return semverRemote, nil
 	}
+	return semverRemote, nil
 }
 
 func downloadReleaseMeta(ctx context.Context, client *github.Client, owner, repo string) (*github.RepositoryRelease, error) {
@@ -120,24 +145,24 @@ func downloadReleaseAsset(ctx context.Context, client *github.Client, owner stri
 	return assetData, nil
 }
 
-func downloadAssets(ctx context.Context, client *github.Client, releaseConfig *common.GithubRelease, releaseData *github.RepositoryRelease) (*map[string][]byte, error) {
+func downloadAssets(ctx context.Context, client *github.Client, cfg *common.GithubSourceConfig, releaseData *github.RepositoryRelease) (*map[string][]byte, error) {
 	assetsData := make(map[string][]byte)
-	for _, asset := range releaseConfig.Assets {
+	for _, asset := range cfg.Assets {
 		assetsData[asset] = []byte{}
 	}
 
 	for _, asset := range releaseData.Assets {
 		if _, ok := assetsData[asset.GetName()]; ok {
-			data, err := downloadReleaseAsset(ctx, client, releaseConfig.Owner, releaseConfig.Repo, asset)
+			data, err := downloadReleaseAsset(ctx, client, cfg.Owner, cfg.Repo, asset)
 			if err != nil {
-				common.Log.Errorf("Failed to download asset %s for release %s: %v", asset.GetName(), releaseConfig.Repo, err)
+				common.Log.Errorf("Failed to download asset %s for release %s: %v", asset.GetName(), cfg.Repo, err)
 				return nil, err
 			}
-			common.Log.Infof("Downloaded asset %s for release %s, size: %d bytes", asset.GetName(), releaseConfig.Repo, len(data))
+			common.Log.Infof("Downloaded asset %s for release %s, size: %d bytes", asset.GetName(), cfg.Repo, len(data))
 
 			assetsData[asset.GetName()] = data
 		}
 	}
-	common.Log.Infof("Total assets downloaded for release %s: %d", releaseConfig.Repo, len(assetsData))
+	common.Log.Infof("Total assets downloaded for release %s: %d", cfg.Repo, len(assetsData))
 	return &assetsData, nil
 }

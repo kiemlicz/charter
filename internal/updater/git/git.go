@@ -138,7 +138,10 @@ func (g *Client) Commit(charts *packager.HelmizedManifests) error {
 	}
 
 	chartPath := fmt.Sprintf("%s/%s", charts.Path, charts.Chart.Metadata.Name)
-	crdsChartPath := fmt.Sprintf("%s/%s", charts.Path, charts.CrdChart.Metadata.Name)
+	crdsChartPath := ""
+	if charts.CrdChart != nil {
+		crdsChartPath = fmt.Sprintf("%s/%s", charts.Path, charts.CrdChart.Metadata.Name)
+	}
 
 	err = g.unstage(wt, chartPath, crdsChartPath)
 	if err != nil {

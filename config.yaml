@@ -18,12 +18,14 @@ pr:
   title: "Automated Chart generation: %s"
   body: "This is an automated PR updating the Helm charts from configured remotes."
 
-githubReleases:
-  - owner: "kubevirt"
-    repo: "kubevirt"
-    assets:
-      - "kubevirt-operator.yaml"
-      - "kubevirt-cr.yaml"
+sources:
+  - type: github
+    github:
+      owner: "kubevirt"
+      repo: "kubevirt"
+      assets:
+        - "kubevirt-operator.yaml"
+        - "kubevirt-cr.yaml"
     helm:
       chartName: "kubevirt"
       drop:
@@ -212,11 +214,13 @@ githubReleases:
       addCrdValues:
         annotations:
           "helm.sh/resource-policy": "keep"
-  - owner: "kubevirt"
-    repo: "containerized-data-importer"
-    assets:
-      - "cdi-operator.yaml"
-      - "cdi-cr.yaml"
+  - type: github
+    github:
+      owner: "kubevirt"
+      repo: "containerized-data-importer"
+      assets:
+        - "cdi-operator.yaml"
+        - "cdi-cr.yaml"
     helm:
       chartName: "cdi"
       drop:
@@ -335,8 +339,8 @@ githubReleases:
           textRegex: "{{ .Values.cdiOperator.role.extraLabels }}"
           kind: "^Role$"
         - expression: '.metadata.labels |= "{{ .Values.cdiOperator.role.extraLabels }}"'
-#          valuesSelector:
-#            - ".metadata.labels" # they are the same as above
+          #          valuesSelector:
+          #            - ".metadata.labels" # they are the same as above
           kind: "^RoleBinding$"
         - expression: |-
             {{ $$labels := merge (include "cdi.labels" . | fromYaml) .Values.cdiOperator.role.extraLabels -}}

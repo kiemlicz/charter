@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"regexp"
 	"strings"
 
@@ -14,6 +15,49 @@ const (
 	ModeUpdate  ModeOfOperation = "update"
 	ModePublish ModeOfOperation = "publish"
 )
+
+// SourceType discriminates ManifestSource implementations in config.
+type SourceType string
+
+const (
+	SourceTypeGithub    SourceType = "github"
+	SourceTypeHelmChart SourceType = "helmChart"
+)
+
+// ManifestSource is the extension point for new upstream manifest origins.
+// Each implementation is responsible for its own version-staleness check:
+// returning (nil, nil) signals the existing chart is already up to date.
+// Implementations must be safe to call concurrently from separate goroutines;
+// a single Fetch invocation need not be re-entrant.
+type ManifestSource interface {
+	// Fetch returns raw manifests for chart generation, or (nil, nil) if already current.
+	Fetch(ctx context.Context, currentVersion, currentAppVersion string) (*Manifests, error)
+	// ChartName is the name of the Helm chart this source produces.
+	ChartName() string
+	// HelmOps returns the transformation and metadata settings for chart generation.
+	HelmOps() *HelmOps
+}
+
+// GithubSourceConfig holds GitHub-specific source parameters.
+type GithubSourceConfig struct {
+	Owner  string   `koanf:"owner"`
+	Repo   string   `koanf:"repo"`
+	Assets []string `koanf:"assets"`
+}
+
+// HelmChartSourceConfig holds parameters for extracting CRDs from an existing Helm chart.
+// The crds/ sub-directory of the chart at SrcDir is used as the manifest origin.
+type HelmChartSourceConfig struct {
+	SrcDir string `koanf:"srcDir"`
+}
+
+// SourceSpec is the tagged-union config entry for a single manifest source.
+type SourceSpec struct {
+	Type      SourceType             `koanf:"type"`
+	Helm      HelmOps                `koanf:"helm"`
+	Github    *GithubSourceConfig    `koanf:"github"`
+	HelmChart *HelmChartSourceConfig `koanf:"helmChart"`
+}
 
 var (
 	ValuesRegexCompiled = regexp.MustCompile(ValuesRegex)
@@ -33,7 +77,8 @@ type Config struct {
 
 	Helm HelmSettings `koanf:"helm"`
 
-	Releases []GithubRelease `koanf:"githubReleases"`
+	// Sources is the list of manifest origins.
+	Sources []SourceSpec `koanf:"sources"`
 }
 
 type PullRequest struct {
@@ -50,13 +95,6 @@ type HelmSettings struct {
 	TargetDir string `koanf:"targetDir"`
 	LintK8s   string `koanf:"lintK8s"`
 	Remote    string `koanf:"remote"`
-}
-
-type GithubRelease struct {
-	Owner  string   `koanf:"owner"`
-	Repo   string   `koanf:"repo"`
-	Assets []string `koanf:"assets"`
-	Helm   HelmOps  `koanf:"helm"`
 }
 
 type HelmOps struct {

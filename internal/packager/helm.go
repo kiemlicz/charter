@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/kiemlicz/charter/internal/common"
-	"github.com/kiemlicz/charter/internal/updater/github"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
@@ -238,23 +237,26 @@ func clearTemplates(path string) error {
 	return nil
 }
 
-func FetchAndUpdate(ctx context.Context, release *common.GithubRelease, settings *common.HelmSettings) (*HelmizedManifests, error) {
-	common.Log.Infof("Updating release: %s", release.Repo)
-	currentVersion, currentAppVersion, err := PeekVersions(settings.SrcDir, release.Helm.ChartName)
+// FetchAndUpdate checks for a newer upstream version via the given ManifestSource,
+// then builds and saves the Helm chart(s). Returns nil when already up to date.
+func FetchAndUpdate(ctx context.Context, source common.ManifestSource, settings *common.HelmSettings) (*HelmizedManifests, error) {
+	chartName := source.ChartName()
+	common.Log.Infof("Checking for updates: %s", chartName)
+	currentVersion, currentAppVersion, err := PeekVersions(settings.SrcDir, chartName)
 	if err != nil {
-		common.Log.Errorf("Failed to get app version from Helm chart %s: %v", release.Helm.ChartName, err)
+		common.Log.Errorf("Failed to read current versions for chart %s: %v", chartName, err)
 		return nil, err
 	}
 
-	manifests, err := github.FetchManifests(ctx, release, currentVersion, currentAppVersion)
+	manifests, err := source.Fetch(ctx, currentVersion, currentAppVersion)
 	if err != nil {
 		return nil, err
 	}
 	if manifests == nil {
-		common.Log.Infof("No updates for release %s, skipping", release.Repo)
+		common.Log.Infof("No updates for %s, skipping", chartName)
 		return nil, nil
 	}
-	return Prepare(manifests, &release.Helm, settings)
+	return Prepare(manifests, source.HelmOps(), settings)
 }
 
 // Prepare creates a Helm chart by
