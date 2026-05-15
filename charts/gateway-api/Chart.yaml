@@ -3,4 +3,4 @@ appVersion: v1.5.1
 description: A Helm Chart for gateway-api
 name: gateway-api
 type: application
-version: 1.5.1
+version: 1.5.2-rc.1

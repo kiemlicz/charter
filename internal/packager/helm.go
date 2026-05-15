@@ -301,6 +301,7 @@ func Prepare(manifests *common.Manifests, helmOps *common.HelmOps, settings *com
 			}
 		}
 	}
+	values := modifiedManifests.Values
 	templates, err := createTemplates(&modifiedManifests.Manifests, &helmOps.Modifications)
 	common.Log.Infof("Created %d templates for main chart", len(templates))
 	if err != nil {
@@ -308,13 +309,14 @@ func Prepare(manifests *common.Manifests, helmOps *common.HelmOps, settings *com
 	}
 	if crdsChart == nil && crdsChartData != nil {
 		templates = append(templates, crdsChartData.Templates...)
+		values = *common.DeepMerge(&values, &modifiedManifests.CrdsValues)
 	}
 	chartData := common.ChartData{
 		Name:       helmOps.ChartName,
 		Version:    version,
 		AppVersion: appVersion,
 		Templates:  templates,
-		Values:     modifiedManifests.Values,
+		Values:     values,
 	}
 
 	mainChart, err := newHelmChart(&chartData, settings)
