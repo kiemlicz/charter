@@ -278,6 +278,7 @@ func Prepare(manifests *common.Manifests, helmOps *common.HelmOps, settings *com
 	version := modifiedManifests.Version
 	appVersion := modifiedManifests.AppVersion
 
+	var crdsChartData *common.ChartData
 	var crdsChart *chart.Chart
 	if modifiedManifests.ContainsCrds() {
 		crdsChartName := fmt.Sprintf("%s-crds", helmOps.ChartName)
@@ -286,23 +287,27 @@ func Prepare(manifests *common.Manifests, helmOps *common.HelmOps, settings *com
 		if err != nil {
 			return nil, err
 		}
-		crdChartData := common.ChartData{
+		crdsChartData = &common.ChartData{
 			Name:       crdsChartName,
 			Version:    version,
 			AppVersion: appVersion,
 			Templates:  templates,
 			Values:     modifiedManifests.CrdsValues,
 		}
-		crdsChart, err = newHelmChart(&crdChartData, settings)
-		if err != nil {
-			return nil, err
+		if helmOps.SeparateCrds {
+			crdsChart, err = newHelmChart(crdsChartData, settings)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-
 	templates, err := createTemplates(&modifiedManifests.Manifests, &helmOps.Modifications)
 	common.Log.Infof("Created %d templates for main chart", len(templates))
 	if err != nil {
 		return nil, err
+	}
+	if crdsChart == nil && crdsChartData != nil {
+		templates = append(templates, crdsChartData.Templates...)
 	}
 	chartData := common.ChartData{
 		Name:       helmOps.ChartName,

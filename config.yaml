@@ -21,6 +21,23 @@ pr:
 sources:
   - type: github
     github:
+      owner: "kubernetes-sigs"
+      repo: "gateway-api"
+      assets:
+        - "standard-install.yaml"
+    helm:
+      chartName: "gateway-api"
+      separateCrds: false
+      modifications:
+        - expression: '.metadata.annotations |= "{{ .Values.annotations | toYaml | nindent 8 }}"'
+          valuesSelector:
+            - ".metadata.annotations"
+          kind: CustomResourceDefinition
+      addValues:
+        annotations:
+          "helm.sh/resource-policy": "keep"
+  - type: github
+    github:
       owner: "kubevirt"
       repo: "kubevirt"
       assets:
@@ -28,6 +45,7 @@ sources:
         - "kubevirt-cr.yaml"
     helm:
       chartName: "kubevirt"
+      separateCrds: true
       drop:
         - namespace
         - namespaces
@@ -223,6 +241,7 @@ sources:
         - "cdi-cr.yaml"
     helm:
       chartName: "cdi"
+      separateCrds: true
       drop:
         - namespace
         - namespaces

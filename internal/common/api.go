@@ -103,6 +103,7 @@ type HelmOps struct {
 	Modifications []Modification `koanf:"modifications"`
 	AddValues     map[string]any `koanf:"addValues"`
 	AddCrdValues  map[string]any `koanf:"addCrdValues"`
+	SeparateCrds  bool           `koanf:"separateCrds"`
 }
 
 type Modification struct {
