@@ -229,7 +229,7 @@ func (g *Client) unstage(wt *gogit.Worktree, chartPath, crdsChartPath string) er
 	}
 	unstageFiles := make([]string, 0)
 	for filePath, status := range status {
-		if strings.HasPrefix(filePath, chartPath) || strings.HasPrefix(filePath, crdsChartPath) {
+		if strings.HasPrefix(filePath, chartPath) || (crdsChartPath != "" && strings.HasPrefix(filePath, crdsChartPath)) {
 			_, err = wt.Add(filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add file %s: %w", filePath, err)
